@@ -1,0 +1,3 @@
+[workspace]
+members = ["proto", "cli", "examples/echo", "sdk"]
+resolver = "2"
