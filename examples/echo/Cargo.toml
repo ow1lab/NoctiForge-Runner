@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 sdk = { path = "../../sdk" }
 tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+

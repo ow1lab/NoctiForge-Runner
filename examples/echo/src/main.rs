@@ -1,7 +1,12 @@
 use sdk::Status;
 
-async fn handler() -> Result<String, Status> {
-    Ok("Hello, World!".to_string())
+#[derive(serde::Deserialize)]
+struct Request {
+    name: String,
+}
+
+async fn handler(req: Request) -> Result<String, Status> {
+    Ok(format!("Hello, {}!", req.name))
 }
 
 #[tokio::main]

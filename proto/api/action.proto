@@ -9,7 +9,7 @@ service FunctionRunnerService {
 }
 
 message InvokeRequest {
-  string payload = 1;
+  optional string payload = 1;
 }
 
 message InvokeResult {

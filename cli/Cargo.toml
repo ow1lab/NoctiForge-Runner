@@ -3,5 +3,13 @@ name = "temp"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "noctiForge"
+path = "src/main.rs"
+
 [dependencies]
-clap = { version = "4.5.41", features = ["derive"] }
+anyhow = { version = "1" }
+clap = { version = "4", features = ["derive"] }
+proto = { path = "../proto" }
+tonic = "0"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
