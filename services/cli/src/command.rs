@@ -1,10 +1,16 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use proto::api::function_runner_service_client::FunctionRunnerServiceClient;
+
+mod run;
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
     Trigger {
         name: String,
+    },
+    Run {
+        path: String
     },
 }
 
@@ -26,7 +32,7 @@ pub async fn run() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Command::Trigger { name } => {
-            let mut client = proto::api::function_runner_service_client::FunctionRunnerServiceClient::connect("http://[::1]:54036").await?;
+            let mut client = FunctionRunnerServiceClient::connect("http://[::1]:54036").await?;
 
             let request = tonic::Request::new(proto::api::InvokeRequest {
                 payload: Some("{\"name\":\"".to_string() + &name + "\"}")
@@ -36,6 +42,10 @@ pub async fn run() -> Result<()> {
 
             println!("{:?}", response.into_inner().output);
 
+            Ok(())
+        }
+        Command::Run { path } => {
+            run::run(path).await?;
             Ok(())
         }
     }

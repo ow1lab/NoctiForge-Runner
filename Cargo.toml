@@ -1,8 +1,12 @@
 [workspace]
 members = [
-  "examples/echo",
   "libs/proto",
   "libs/sdk",
   "services/cli",
 ]
+
+exclude = [
+  "examples/echo",
+]
+
 resolver = "2"

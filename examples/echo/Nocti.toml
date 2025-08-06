@@ -1,0 +1,11 @@
+[project]
+name = "echo"
+type = "custom"
+
+[build]
+command = "cargo build --release"
+output = "target/release/echo"
+
+[run]
+command = "cargo build"
+output = "target/dev/echo"
