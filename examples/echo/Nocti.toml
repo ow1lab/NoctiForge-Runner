@@ -5,7 +5,3 @@ type = "Custom"
 [build.Custom]
 command = "cargo build --release"
 output = "./target/release/echo"
-
-[run.Custom]
-command = "cargo build"
-output = "./target/debug/echo"

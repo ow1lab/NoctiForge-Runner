@@ -3,6 +3,7 @@ members = [
   "libs/proto",
   "libs/sdk",
   "services/cli",
+  "services/registry",
 ]
 
 exclude = [
