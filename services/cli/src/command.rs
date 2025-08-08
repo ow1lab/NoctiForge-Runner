@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-mod run;
 mod trigger;
+mod push;
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
@@ -12,7 +12,7 @@ pub enum Command {
         #[arg(short, long)]
         body: String,
     },
-    Run {
+    Push {
         path: String,
     },
 }
@@ -37,8 +37,8 @@ pub async fn run() -> Result<()> {
         Command::Trigger { name, body } => {
             trigger::run(name, body).await?
         }
-        Command::Run { path } => {
-            run::run(path).await?;
+        Command::Push { path } => {
+            push::run(path).await?;
         }
     }
 

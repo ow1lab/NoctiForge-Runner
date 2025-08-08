@@ -15,11 +15,11 @@ message RegistryPullRequest {
 
 message RegistryPullResponse {
   bytes data = 1;
-  bytes signature = 2;
-  string digest = 3;
 }
 
 message RegistryPushRequest {
   bytes data = 1;
 } 
-message RegistryPushResponse {}
+message RegistryPushResponse {
+  string digest = 1;
+}

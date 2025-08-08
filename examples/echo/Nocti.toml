@@ -1,0 +1,12 @@
+[project]
+name="echo"
+
+[build]
+type="custom"
+script="""
+cargo build --release --target x86_64-unknown-linux-musl
+mkdir temp
+cp target/x86_64-unknown-linux-musl/release/echo ./temp/bootstrap
+"""
+output="temp"
+
