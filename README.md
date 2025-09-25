@@ -6,6 +6,15 @@ Just write a handler. NoctiForge handles the rest.
 
 ---
 
+# Usage
+NoctiForge is build with the developer in mind. so to make it easy to develop i have provided a cli tool that can used to quickly develop it.
+```sh
+./cli push {folder}             # build & push a single function
+./cli push all                  # build & push all functions in the project
+./cli invoke {name} ({body})    # run a function locally
+./cli list                      # list all functions in the registry
+```
+
 ## Development
 ### Prerequisites
 Ensure you have the following installed:
