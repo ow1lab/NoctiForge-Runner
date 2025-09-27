@@ -11,5 +11,5 @@ pub fn get_registry_dir_path() -> PathBuf {
 pub fn get_registry_path(digest: &str) -> PathBuf {
     get_registry_dir_path()
         .join(digest)
-        .with_extension("tar.zst")
+        .with_extension("tar")
 }

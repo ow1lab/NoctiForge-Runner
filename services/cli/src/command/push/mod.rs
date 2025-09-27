@@ -2,11 +2,13 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Result};
 use custom::CustomBuild;
+use proto::api::registry::{self, RegistryPushRequest};
 use rust::RustBuild;
 use serde::Deserialize;
-use tokio::fs::File;
+use tokio::io::{duplex, AsyncReadExt};
 use tokio_tar::Builder;
-use tonic::async_trait;
+use tonic::{async_trait, Request};
+use registry::registry_service_client::RegistryServiceClient;
 
 mod custom;
 mod rust;
@@ -66,14 +68,49 @@ pub async fn run(path: &str) -> Result<()> {
     let bin_folder = project_path.join(path);
 
     println!("bin_folder: {:?}", bin_folder);
+    let (writer, mut reader) = duplex(8 * 1024);
 
-    // zip It
-    let file = File::create("needname.tar").await?;
-    let mut a = Builder::new(file);
+    tokio::spawn(async move {
+        let mut builder = Builder::new(writer);
+        // Use `.await` since tokio_tar is async
+        if let Err(e) = builder.append_dir_all(".", bin_folder).await {
+            eprintln!("tar append_dir_all error: {}", e);
+            return;
+        }
+        if let Err(e) = builder.finish().await {
+            eprintln!("tar finish error: {}", e);
+        }
+        // When this task ends, `writer` is dropped, which causes EOF on reader side
+    });
 
-    a.append_dir_all(".", bin_folder).await?;
-    a.finish().await?;
+    // Create a stream of RegistryPushRequest from reader
+    let outbound = async_stream::stream! {
+        let mut buf = [0u8; 8192];
+        loop {
+            match reader.read(&mut buf).await {
+                Ok(0) => {
+                    // EOF
+                    break;
+                }
+                Ok(n) => {
+                    // yield a chunk
+                    let req = RegistryPushRequest {
+                        data: buf[..n].to_vec(),
+                    };
+                    yield req;
+                }
+                Err(e) => {
+                    eprintln!("Error reading from pipe: {}", e);
+                    break;
+                }
+            }
+        }
+    };
 
-    // push to registry
+    let mut client = RegistryServiceClient::connect("http://localhost:50001").await?;
+    let response = client.push(Request::new(outbound)).await?.into_inner();
+
+    println!("{}", response.digest);
+
     Ok(())
 }
