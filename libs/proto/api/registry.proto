@@ -1,8 +1,6 @@
 syntax = "proto3";
 
-package noctifunc.registry;
-
-option go_package = "github.com/Ow1Dev/noctifunc/pkg/api/server";
+package noctiforge.registry;
 
 service RegistryService {
   rpc Pull(RegistryPullRequest) returns (stream RegistryPullResponse);

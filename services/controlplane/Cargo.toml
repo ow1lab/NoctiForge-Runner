@@ -4,3 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+proto = { path = "../../libs/proto" }
+sha2 = { version = "0.10" }
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "process"] }
+tokio-stream = { features = ["io-util"], version = "0" }
+tokio-tar = "0"
+tonic = "0"

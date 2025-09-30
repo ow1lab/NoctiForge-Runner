@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package noctifunc.action;
+package noctiforge.action;
 
-option go_package = "github.com/Ow1Dev/noctifunc/pkg/api/server";
+option go_package = "github.com/Ow1Dev/noctiforge/pkg/api/server";
 
 service FunctionRunnerService {
   rpc Invoke(InvokeRequest) returns (InvokeResult);

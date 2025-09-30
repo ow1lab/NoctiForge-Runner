@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Result};
 use custom::CustomBuild;
-use proto::api::registry::{self, RegistryPushRequest};
+use proto::api::{controlplane::{control_plane_service_client::ControlPlaneServiceClient, GetDigestByNameRequest, SetDigestToNameRequest}, registry::{self, RegistryPushRequest}};
 use rust::RustBuild;
 use serde::Deserialize;
 use tokio::io::{duplex, AsyncReadExt};
@@ -110,7 +110,14 @@ pub async fn run(path: &str) -> Result<()> {
     let mut client = RegistryServiceClient::connect("http://localhost:50001").await?;
     let response = client.push(Request::new(outbound)).await?.into_inner();
 
-    println!("{}", response.digest);
+    let key = config.project.name;
 
-    Ok(())
+    let mut client = ControlPlaneServiceClient::connect("http://localhost:50002").await?;
+    let request = SetDigestToNameRequest { key: key.clone(), digest: response.digest };
+    let response = client.set_digest_to_name(Request::new(request)).await?.into_inner();
+
+    match response.success {
+        true => Ok({}),
+        false => bail!("Something happend when setting digiest to key")
+    }
 }
