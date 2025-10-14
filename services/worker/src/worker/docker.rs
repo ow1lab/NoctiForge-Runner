@@ -11,8 +11,9 @@ impl DockerWorker {
 }
 
 impl FunctionWorker for DockerWorker {
-    fn execute(&self, package_digest: String) -> Result<(), Box<dyn std::error::Error>> {
+    fn execute(&self, package_digest: String, body: String) -> Result<(), Box<dyn std::error::Error>> {
         println!("Running in Docker with package: {}", package_digest);
+        println!("Body: {}", body);
         Ok(())
     }
 }

@@ -25,6 +25,7 @@
       {
         devShell = pkgs.mkShell {
           packages = with pkgs; [
+            grpcurl
             just
             protobuf 
             rust

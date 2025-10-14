@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -euo pipefail
 
 echo "Creating /var/lib/noctiforge directory with proper permissions..."
