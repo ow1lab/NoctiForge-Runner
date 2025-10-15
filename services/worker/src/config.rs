@@ -2,7 +2,8 @@ use std::net::SocketAddr;
 
 pub struct ServerConfig {
     pub addr: SocketAddr,
-    pub controlplane_clinet: String
+    pub controlplane_clinet: String,
+    pub registry_clinet: String,
 }
 
 impl ServerConfig {
@@ -16,7 +17,12 @@ impl ServerConfig {
             .unwrap_or_else(|_| "http://localhost:50002".to_string())
             .parse()
             .expect("Invalid controlplane address");
-        Self { addr, controlplane_clinet }
+
+        let registry_clinet = std::env::var("REGISTRY_CLINET")
+            .unwrap_or_else(|_| "http://localhost:50001".to_string())
+            .parse()
+            .expect("Invalid registry address");
+        Self { addr, controlplane_clinet, registry_clinet }
     }
 }
 

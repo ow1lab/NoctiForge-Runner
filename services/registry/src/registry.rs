@@ -8,7 +8,7 @@ use proto::api::registry::{
     RegistryPushResponse,
 };
 use sha2::{Digest, Sha256};
-use tokio::{fs::write, io::AsyncReadExt};
+use tokio::{fs::{read, write}, io::AsyncReadExt, task::futures};
 use tokio_stream::{Stream, StreamExt};
 use tokio_tar::Archive;
 use tonic::{
@@ -21,6 +21,8 @@ use tonic::{
 
 use crate::path::{get_registry_path};
 
+const CHUNK_SIZE: usize = 64 * 1024;
+
 #[derive(Default)]
 pub struct LocalBackend {}
 
@@ -32,9 +34,25 @@ impl RegistryService for LocalBackend {
         &self,
         request: Request<RegistryPullRequest>,
     ) -> Result<Response<Self::PullStream>, Status> {
-        _ = request;
-        // Placeholder: return an empty stream
-        let stream = tokio_stream::empty();
+        let req = request.into_inner();
+
+        let request_path = get_registry_path(&req.digest);
+        println!("Getting tar from {:?}", request_path);
+
+        let data = read(request_path).await.map_err(|err| {
+            Status::internal(format!("failed to read store path: {:?}", err))
+        })?;
+
+
+        let stream = tokio_stream::iter(
+            data.chunks(CHUNK_SIZE).map(|chunk| {
+                Ok(RegistryPullResponse {
+                    data: chunk.to_vec(),
+                })
+            })
+            .collect::<Vec<_>>()
+        );
+
         Ok(Response::new(Box::pin(stream)))
     }
 
