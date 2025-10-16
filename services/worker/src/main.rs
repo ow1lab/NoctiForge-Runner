@@ -1,18 +1,18 @@
 mod server;
 mod config;
 mod worker;
-mod controlplane_client;
-mod registry_clint;
+mod client;
+mod path;
 
 use std::sync::Arc;
 
 use proto::api::worker::worker_service_server::WorkerServiceServer;
 use tonic::transport::Server;
 
-use crate::registry_clint::RegistryClient;
+use crate::client::controlplane_client::ControlPlaneClient;
+use crate::client::registry_clint::RegistryClient;
 use crate::server::WorkerServer;
 use crate::worker::native::NativeWorker;
-use crate::controlplane_client::ControlPlaneClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

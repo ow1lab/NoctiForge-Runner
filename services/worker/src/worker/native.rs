@@ -1,6 +1,5 @@
 use crate::worker::FunctionWorker;
 use anyhow::Result;
-use mktemp::Temp;
 
 pub struct NativeWorker {
 }

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use proto::api::worker::{worker_service_server::WorkerService, ExecuteRequest, ExecuteResponse};
 use tonic::{Request, Response, Status};
 
-use crate::{controlplane_client::ControlPlaneClient, registry_clint::RegistryClient, worker::FunctionWorker};
+use crate::{client::{controlplane_client::ControlPlaneClient, registry_clint::RegistryClient}, worker::FunctionWorker};
 
 pub struct WorkerServer {
     function_worker: Arc<dyn FunctionWorker + Send + Sync>,
