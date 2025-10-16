@@ -2630,6 +2630,7 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]
@@ -2975,6 +2976,7 @@ dependencies = [
  "tokio",
  "tokio-tar",
  "tonic",
+ "url",
 ]
 
 [[package]]

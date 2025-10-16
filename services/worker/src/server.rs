@@ -1,25 +1,20 @@
-use std::sync::Arc;
-
 use proto::api::worker::{worker_service_server::WorkerService, ExecuteRequest, ExecuteResponse};
 use tonic::{Request, Response, Status};
 
-use crate::{client::{controlplane_client::ControlPlaneClient, registry_clint::RegistryClient}, worker::FunctionWorker};
+use crate::{client::{controlplane_client::ControlPlaneClient}, worker::NativeWorker};
 
 pub struct WorkerServer {
-    function_worker: Arc<dyn FunctionWorker + Send + Sync>,
+    function_worker: NativeWorker,
     controlplane_client: ControlPlaneClient,
-    registry_clint: RegistryClient,
 }
 
 impl WorkerServer {
     pub fn new(
-        function_worker: Arc<dyn FunctionWorker + Send + Sync>,
-        controlplane_client: ControlPlaneClient,
-        registry_clint: RegistryClient) -> Self {
+        function_worker: NativeWorker,
+        controlplane_client: ControlPlaneClient) -> Self {
         Self {
             function_worker,
             controlplane_client,
-            registry_clint,
         }
     }
 }
@@ -37,16 +32,10 @@ impl WorkerService for WorkerServer {
            .await
            .map_err(|e| Status::internal(format!("Failed to commnicate with controlplane: {:?}", e)))?;
 
-        _ = self.registry_clint.get_tar_by_digest(digits.clone())
-            .await
-           .map_err(|e| Status::internal(format!("Failed to commnicate with registry: {:?}", e)))?;
-
-
-       println!("Executing handler");
-       self.function_worker.execute(digits, req.body).map_err(|e| Status::internal(format!("Execution failed: {:?}", e)))?;
+       let output = self.function_worker.execute(digits, req.body).await.map_err(|e| Status::internal(format!("Execution failed: {:?}", e)))?;
         Ok(Response::new(ExecuteResponse{
             status: "Ok".to_string(),
-            resp: "Anwser".to_string()
+            resp: output 
         }))
     }
 }

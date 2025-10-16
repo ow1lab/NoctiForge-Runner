@@ -9,3 +9,4 @@ proto = { path = "../../libs/proto" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "fs"] }
 tokio-tar = "0"
 tonic = "0"
+url = "2.5"

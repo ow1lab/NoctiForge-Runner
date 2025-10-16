@@ -20,7 +20,7 @@ impl RegistryClient {
 }
 
 impl RegistryClient {
-    pub async fn get_tar_by_digest(&self, digest: String) -> Result<PathBuf> {
+    pub async fn get_tar_by_digest(&self, digest: &str) -> Result<PathBuf> {
         let dir_path = get_dir_path(&digest);
 
         if dir_path.exists() {
