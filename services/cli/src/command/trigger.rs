@@ -1,7 +1,7 @@
 use anyhow::Result;
-use proto::api::worker::worker_service_client::WorkerServiceClient;
 use proto::api::worker::ExecuteRequest;
-use tracing::{info, debug, error};
+use proto::api::worker::worker_service_client::WorkerServiceClient;
+use tracing::{debug, error, info};
 
 pub async fn run(key: String, body: String) -> Result<()> {
     info!("Triggering action: '{}'", key);
@@ -42,4 +42,3 @@ pub async fn run(key: String, body: String) -> Result<()> {
 
     Ok(())
 }
-

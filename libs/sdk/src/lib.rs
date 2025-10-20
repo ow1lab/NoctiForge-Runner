@@ -1,8 +1,11 @@
-use proto::api::action::{function_runner_service_server::{FunctionRunnerService, FunctionRunnerServiceServer}, InvokeRequest, InvokeResult};
-use tokio::net::UnixListener;
-use tonic::{Response};
-use serde::{de::DeserializeOwned, Serialize};
+use proto::api::action::{
+    InvokeRequest, InvokeResult,
+    function_runner_service_server::{FunctionRunnerService, FunctionRunnerServiceServer},
+};
+use serde::{Serialize, de::DeserializeOwned};
 use std::{future::Future, marker::PhantomData};
+use tokio::net::UnixListener;
+use tonic::Response;
 
 pub use tonic::Status;
 
@@ -47,20 +50,18 @@ where
                 (self.handler.clone())(unit).await?
             } else {
                 let input: In = serde_json::from_str(&request.into_inner().payload.unwrap())
-                .map_err(|e| Status::invalid_argument(e.to_string()))?;
+                    .map_err(|e| Status::invalid_argument(e.to_string()))?;
                 (self.handler.clone())(input).await?
             };
 
-            let json = serde_json::to_string(&result).map_err(|e| Status::internal(e.to_string()))?;
+            let json =
+                serde_json::to_string(&result).map_err(|e| Status::internal(e.to_string()))?;
 
-            Ok(Response::new(InvokeResult {
-                output: json,
-            }))
+            Ok(Response::new(InvokeResult { output: json }))
         }
     }
 
-    let socket_path = std::env::var("SOCKET_PATH")
-        .expect("'SOCKET_PATH' was not set");
+    let socket_path = std::env::var("SOCKET_PATH").expect("'SOCKET_PATH' was not set");
 
     if std::path::Path::new(&socket_path).exists() {
         std::fs::remove_file(&socket_path)?;
@@ -69,7 +70,10 @@ where
     let listener = UnixListener::bind(&socket_path)?;
     log::info!("Starting server on Unix socket: {}", socket_path);
 
-    let svc = FunctionRunnerServiceServer::new(MyService { handler, _marker: PhantomData });
+    let svc = FunctionRunnerServiceServer::new(MyService {
+        handler,
+        _marker: PhantomData,
+    });
 
     tonic::transport::Server::builder()
         .add_service(svc)

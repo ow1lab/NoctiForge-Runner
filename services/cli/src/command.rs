@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-mod trigger;
 mod push;
+mod trigger;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -17,13 +17,8 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    Trigger {
-        action: String,
-        payload: String,
-    },
-    Push {
-        path: String,
-    },
+    Trigger { action: String, payload: String },
+    Push { path: String },
 }
 
 #[derive(Parser, Debug)]
@@ -32,16 +27,13 @@ struct Commands {
     command: Command,
 }
 
-
 pub async fn run() -> Result<()> {
     let cli = Cli::parse();
 
     setup_tracing(cli.verbose)?;
 
     match cli.command {
-        Command::Trigger { action, payload } => {
-            trigger::run(action, payload).await?
-        }
+        Command::Trigger { action, payload } => trigger::run(action, payload).await?,
         Command::Push { path } => {
             push::run(&path).await?;
         }

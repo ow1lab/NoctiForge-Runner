@@ -1,15 +1,20 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use custom::CustomBuild;
-use proto::api::{controlplane::{control_plane_service_client::ControlPlaneServiceClient, SetDigestToNameRequest}, registry::{self, RegistryPushRequest}};
+use proto::api::{
+    controlplane::{
+        SetDigestToNameRequest, control_plane_service_client::ControlPlaneServiceClient,
+    },
+    registry::{self, RegistryPushRequest},
+};
+use registry::registry_service_client::RegistryServiceClient;
 use rust::RustBuild;
 use serde::Deserialize;
-use tokio::io::{duplex, AsyncReadExt};
+use tokio::io::{AsyncReadExt, duplex};
 use tokio_tar::Builder;
-use tonic::{async_trait, Request};
-use registry::registry_service_client::RegistryServiceClient;
-use tracing::{info, error, debug};
+use tonic::{Request, async_trait};
+use tracing::{debug, error, info};
 
 mod custom;
 mod rust;
@@ -44,7 +49,6 @@ enum Build {
     Rust(RustBuild),
 }
 
-
 pub async fn run(path: &str) -> Result<()> {
     let project_path = Path::new(path);
     info!("Running push command on path: {:?}", project_path);
@@ -62,7 +66,7 @@ pub async fn run(path: &str) -> Result<()> {
 
     info!("Loading project config from: {:?}", config_file_path);
     let config_content = std::fs::read_to_string(config_file_path)?;
-    let config: Config = toml::from_str(&config_content)?; 
+    let config: Config = toml::from_str(&config_content)?;
     debug!("Parsed config: {:?}", config);
 
     // Run the scripts
@@ -136,7 +140,10 @@ pub async fn run(path: &str) -> Result<()> {
         digest: response.digest,
     };
 
-    let response = client.set_digest_to_name(Request::new(request)).await?.into_inner();
+    let response = client
+        .set_digest_to_name(Request::new(request))
+        .await?
+        .into_inner();
     if response.success {
         info!("Successfully set digest for key '{}'", key);
         Ok(())

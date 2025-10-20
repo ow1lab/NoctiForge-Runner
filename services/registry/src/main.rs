@@ -1,5 +1,5 @@
-use tonic::transport::Server;
 use proto::api::registry::registry_service_server::RegistryServiceServer;
+use tonic::transport::Server;
 
 mod path;
 mod registry;

@@ -1,16 +1,16 @@
 use std::path::{Path, PathBuf};
 
-use std::io::Cursor;
 use anyhow::{Ok, Result};
-use proto::api::registry::{registry_service_client::RegistryServiceClient, RegistryPullRequest};
+use proto::api::registry::{RegistryPullRequest, registry_service_client::RegistryServiceClient};
+use std::io::Cursor;
+use tokio::fs::create_dir;
 use tokio_tar::Archive;
 use tonic::Request;
-use tokio::fs::create_dir;
 
 use crate::path::get_dir_path;
 
 pub struct RegistryClient {
-    pub addr: String 
+    pub addr: String,
 }
 
 impl RegistryClient {
@@ -35,7 +35,9 @@ impl RegistryClient {
     async fn fetch_digest(&self, digest: &str) -> Result<Vec<u8>> {
         let mut client = RegistryServiceClient::connect(self.addr.clone()).await?;
         let mut response = client
-            .pull(Request::new(RegistryPullRequest { digest: digest.to_string() } ))
+            .pull(Request::new(RegistryPullRequest {
+                digest: digest.to_string(),
+            }))
             .await?
             .into_inner();
 
@@ -55,4 +57,3 @@ impl RegistryClient {
         Ok(())
     }
 }
-

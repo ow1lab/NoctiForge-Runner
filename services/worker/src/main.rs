@@ -1,8 +1,8 @@
-mod server;
-mod config;
-mod worker;
 mod client;
+mod config;
 mod path;
+mod server;
+mod worker;
 
 use proto::api::worker::worker_service_server::WorkerServiceServer;
 use tonic::transport::Server;
@@ -19,14 +19,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let registry_clinet = RegistryClient::new(config.registry_clinet);
     let controlplane_client = ControlPlaneClient::new(config.controlplane_clinet);
-    let function_worker = NativeWorker::new(registry_clinet, Config {
-        is_dev: config.env == Environment::Development 
-    })?;
+    let function_worker = NativeWorker::new(
+        registry_clinet,
+        Config {
+            is_dev: config.env == Environment::Development,
+        },
+    )?;
 
-    let worker_server = WorkerServer::new(
-        function_worker,
-        controlplane_client,
-    );
+    let worker_server = WorkerServer::new(function_worker, controlplane_client);
 
     println!("ControlPlaneService listening on {}", config.addr);
 

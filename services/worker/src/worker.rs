@@ -1,12 +1,19 @@
-use std::{collections::HashMap, path::{Path, PathBuf}, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
 use anyhow::{Ok, Result};
 use tokio::{process::Command, sync::Mutex, time::sleep};
 use tonic::Request;
 use url::Url;
 
-use crate::{client::registry_clint::RegistryClient};
-use proto::api::action::{function_runner_service_client::FunctionRunnerServiceClient, InvokeRequest};
+use crate::client::registry_clint::RegistryClient;
+use proto::api::action::{
+    InvokeRequest, function_runner_service_client::FunctionRunnerServiceClient,
+};
 
 const SERVER_STARTUP_TIMEOUT_MS: u64 = 3000;
 const SERVER_STARTUP_RETRY_INTERVAL_MS: u64 = 10;
@@ -45,7 +52,6 @@ impl NativeWorker {
         Ok(resp.output)
     }
 
-    
     async fn get_available_handler_uri(&self, digest: String) -> Result<Url> {
         // Check if URL is already cached
         {
@@ -60,7 +66,8 @@ impl NativeWorker {
 
         // Insert into cache
         self.function_urls.lock().await.insert(digest, url.clone());
-        Ok(url)}
+        Ok(url)
+    }
 
     async fn start_handler(&self, bin_path: PathBuf) -> Result<Url> {
         let bootstrap_path = bin_path.join("bootstrap");
@@ -69,8 +76,9 @@ impl NativeWorker {
         let socket_path = match self.config.is_dev {
             true => Path::new("/tmp"),
             false => Path::new("/run"),
-        }.join(uuid.to_string())
-            .with_extension("sock");
+        }
+        .join(uuid.to_string())
+        .with_extension("sock");
 
         let socket_path_str = socket_path
             .to_str()
@@ -90,9 +98,9 @@ impl NativeWorker {
 
     async fn wait_for_server_ready(&self, url: &Url) -> Result<()> {
         let max_attempts = (SERVER_STARTUP_TIMEOUT_MS / SERVER_STARTUP_RETRY_INTERVAL_MS) as u32;
-        let retry_interval = Duration::from_millis(SERVER_STARTUP_RETRY_INTERVAL_MS);  
+        let retry_interval = Duration::from_millis(SERVER_STARTUP_RETRY_INTERVAL_MS);
 
-        for attempt in 1..= max_attempts {
+        for attempt in 1..=max_attempts {
             let uri = format!("unix://{}", url.path());
             match FunctionRunnerServiceClient::connect(uri).await {
                 std::result::Result::Ok(_) => {
@@ -111,7 +119,7 @@ impl NativeWorker {
                 }
             }
         }
-        
+
         unreachable!("Loop should have returned")
     }
 }

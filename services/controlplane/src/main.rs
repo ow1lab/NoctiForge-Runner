@@ -1,11 +1,11 @@
 use std::path::Path;
 
-use tonic::transport::Server;
 use proto::api::controlplane::control_plane_service_server::ControlPlaneServiceServer;
+use tonic::transport::Server;
 
+mod config;
 mod server;
 mod services;
-mod config;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,4 +22,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-

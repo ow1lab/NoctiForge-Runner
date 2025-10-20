@@ -1,6 +1,4 @@
-use proto::api::controlplane::{
-    GetDigestByNameResponse, SetDigestToNameResponse,
-};
+use proto::api::controlplane::{GetDigestByNameResponse, SetDigestToNameResponse};
 use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
 use std::path::Path;
 use tonic::{Response, Status};
@@ -11,13 +9,12 @@ pub struct DigestService {
 
 impl DigestService {
     pub async fn new(db_path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
-        let parent = db_path.parent().ok_or("Database path has no parent directory")?;
+        let parent = db_path
+            .parent()
+            .ok_or("Database path has no parent directory")?;
 
         if !parent.exists() {
-            return Err(format!(
-                "Parent directory does not exist: {}",
-                parent.display()
-            ).into());
+            return Err(format!("Parent directory does not exist: {}", parent.display()).into());
         }
 
         let database_url = format!("sqlite://{}?mode=rwc", db_path.display());
@@ -39,25 +36,26 @@ impl DigestService {
         )
         .execute(&pool)
         .await?;
-        
+
         Ok(Self { pool })
     }
-    
+
     pub async fn get_digest_by_name(
         &self,
         key: &str,
     ) -> Result<Response<GetDigestByNameResponse>, Status> {
-        let result = sqlx::query_as::<_, (String,)>(
-            "SELECT digest FROM digests WHERE name = ?"
-        )
-        .bind(key)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| Status::internal(format!("Database error: {}", e)))?;
+        let result = sqlx::query_as::<_, (String,)>("SELECT digest FROM digests WHERE name = ?")
+            .bind(key)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| Status::internal(format!("Database error: {}", e)))?;
 
         match result {
             Some((digest,)) => Ok(Response::new(GetDigestByNameResponse { digest })),
-            None => Err(Status::not_found(format!("Digest not found for name: {}", key))),
+            None => Err(Status::not_found(format!(
+                "Digest not found for name: {}",
+                key
+            ))),
         }
     }
 
@@ -80,9 +78,7 @@ impl DigestService {
         .execute(&self.pool)
         .await
         .map_err(|e| Status::internal(format!("Database error: {}", e)))?;
-        
+
         Ok(Response::new(SetDigestToNameResponse { success: true }))
     }
 }
-
-

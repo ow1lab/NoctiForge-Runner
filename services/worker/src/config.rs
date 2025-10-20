@@ -34,7 +34,11 @@ impl ServerConfig {
             .unwrap_or_else(|_| "http://localhost:50001".to_string())
             .parse()
             .expect("Invalid registry address");
-        Self { addr, controlplane_clinet, registry_clinet, env }
+        Self {
+            addr,
+            controlplane_clinet,
+            registry_clinet,
+            env,
+        }
     }
 }
-

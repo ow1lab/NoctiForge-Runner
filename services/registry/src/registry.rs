@@ -1,25 +1,19 @@
 use std::{io::Cursor, pin::Pin};
 
 use proto::api::registry::{
+    RegistryPullRequest, RegistryPullResponse, RegistryPushRequest, RegistryPushResponse,
     registry_service_server::RegistryService,
-    RegistryPullRequest,
-    RegistryPullResponse,
-    RegistryPushRequest,
-    RegistryPushResponse,
 };
 use sha2::{Digest, Sha256};
-use tokio::{fs::{read, write}, io::AsyncReadExt};
+use tokio::{
+    fs::{read, write},
+    io::AsyncReadExt,
+};
 use tokio_stream::{Stream, StreamExt};
 use tokio_tar::Archive;
-use tonic::{
-    Request,
-    Streaming,
-    Result,
-    Response,
-    Status
-};
+use tonic::{Request, Response, Result, Status, Streaming};
 
-use crate::path::{get_registry_path};
+use crate::path::get_registry_path;
 
 const CHUNK_SIZE: usize = 64 * 1024;
 
@@ -28,7 +22,8 @@ pub struct LocalBackend {}
 
 #[tonic::async_trait]
 impl RegistryService for LocalBackend {
-    type PullStream = Pin<Box<dyn Stream<Item = Result<RegistryPullResponse, Status>> + Send + 'static>>;
+    type PullStream =
+        Pin<Box<dyn Stream<Item = Result<RegistryPullResponse, Status>> + Send + 'static>>;
 
     async fn pull(
         &self,
@@ -39,24 +34,26 @@ impl RegistryService for LocalBackend {
         let request_path = get_registry_path(&req.digest);
         println!("Getting tar from {:?}", request_path);
 
-        let data = read(request_path).await.map_err(|err| {
-            Status::internal(format!("failed to read store path: {:?}", err))
-        })?;
-
+        let data = read(request_path)
+            .await
+            .map_err(|err| Status::internal(format!("failed to read store path: {:?}", err)))?;
 
         let stream = tokio_stream::iter(
-            data.chunks(CHUNK_SIZE).map(|chunk| {
-                Ok(RegistryPullResponse {
-                    data: chunk.to_vec(),
+            data.chunks(CHUNK_SIZE)
+                .map(|chunk| {
+                    Ok(RegistryPullResponse {
+                        data: chunk.to_vec(),
+                    })
                 })
-            })
-            .collect::<Vec<_>>()
+                .collect::<Vec<_>>(),
         );
 
         Ok(Response::new(Box::pin(stream)))
     }
 
-    async fn push(&self, request: Request<Streaming<RegistryPushRequest>>,
+    async fn push(
+        &self,
+        request: Request<Streaming<RegistryPushRequest>>,
     ) -> Result<Response<RegistryPushResponse>, Status> {
         let mut request_data: Vec<u8> = vec![];
         let mut request_stream = request.into_inner();
@@ -79,7 +76,7 @@ impl RegistryService for LocalBackend {
             )));
         }
 
-        let digest = get_digist(archive).await?; 
+        let digest = get_digist(archive).await?;
         let request_path = get_registry_path(&digest);
 
         if !request_path.exists() {
@@ -92,26 +89,24 @@ impl RegistryService for LocalBackend {
     }
 }
 
-async fn get_digist<T: std::marker::Unpin + tokio::io::AsyncRead>(mut archive: Archive<T>) -> Result<String>
-{
+async fn get_digist<T: std::marker::Unpin + tokio::io::AsyncRead>(
+    mut archive: Archive<T>,
+) -> Result<String> {
     let mut hasher = Sha256::new();
 
     let mut entries = archive.entries()?;
     while let Some(file) = entries.next().await {
         let mut entry = file?;
-        let path = entry
-            .path()?
-            .to_string_lossy()
-            .to_string();
+        let path = entry.path()?.to_string_lossy().to_string();
 
         if entry.header().entry_type().is_file() {
             let mut buf = Vec::new();
             entry.read_to_end(&mut buf).await?;
-            hasher.update(b"file:");        // prefix to differentiate files/folders
+            hasher.update(b"file:"); // prefix to differentiate files/folders
             hasher.update(path.as_bytes());
             hasher.update(&buf);
         } else if entry.header().entry_type().is_dir() {
-            hasher.update(b"dir:");         // prefix for directories
+            hasher.update(b"dir:"); // prefix for directories
             hasher.update(path.as_bytes());
         }
     }

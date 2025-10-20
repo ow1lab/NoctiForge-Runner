@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 pub const DB_PATH: &str = "/var/lib/noctiforge/controlplane/digests.db";
 
 pub struct ServerConfig {
-    pub addr: SocketAddr
+    pub addr: SocketAddr,
 }
 
 impl ServerConfig {
@@ -16,4 +16,3 @@ impl ServerConfig {
         Self { addr }
     }
 }
-

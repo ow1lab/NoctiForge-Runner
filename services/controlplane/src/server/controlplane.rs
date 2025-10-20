@@ -1,9 +1,8 @@
 use std::path::Path;
 
 use proto::api::controlplane::{
-    control_plane_service_server::ControlPlaneService,
-    GetDigestByNameRequest,
-    GetDigestByNameResponse, SetDigestToNameRequest, SetDigestToNameResponse
+    GetDigestByNameRequest, GetDigestByNameResponse, SetDigestToNameRequest,
+    SetDigestToNameResponse, control_plane_service_server::ControlPlaneService,
 };
 use tonic::{Request, Response, Status};
 
@@ -25,7 +24,7 @@ impl ControlPlane {
 impl ControlPlaneService for ControlPlane {
     async fn get_digest_by_name(
         &self,
-        request: Request<GetDigestByNameRequest>
+        request: Request<GetDigestByNameRequest>,
     ) -> Result<Response<GetDigestByNameResponse>, Status> {
         let req = request.into_inner();
         self.digest_service.get_digest_by_name(&req.key).await
@@ -33,9 +32,11 @@ impl ControlPlaneService for ControlPlane {
 
     async fn set_digest_to_name(
         &self,
-        request: Request<SetDigestToNameRequest>
+        request: Request<SetDigestToNameRequest>,
     ) -> Result<Response<SetDigestToNameResponse>, Status> {
         let req = request.into_inner();
-        self.digest_service.set_digest_by_name(&req.key, &req.digest).await
+        self.digest_service
+            .set_digest_by_name(&req.key, &req.digest)
+            .await
     }
 }

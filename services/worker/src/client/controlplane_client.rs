@@ -1,9 +1,11 @@
 use anyhow::{Ok, Result};
-use proto::api::controlplane::{control_plane_service_client::ControlPlaneServiceClient, GetDigestByNameRequest};
+use proto::api::controlplane::{
+    GetDigestByNameRequest, control_plane_service_client::ControlPlaneServiceClient,
+};
 use tonic::Request;
 
 pub struct ControlPlaneClient {
-    pub addr: String 
+    pub addr: String,
 }
 
 impl ControlPlaneClient {
@@ -15,8 +17,10 @@ impl ControlPlaneClient {
 impl ControlPlaneClient {
     pub async fn get_digest(&self, key: String) -> Result<String> {
         let mut client = ControlPlaneServiceClient::connect(self.addr.clone()).await?;
-        let response = client.get_digest_by_name(Request::new(GetDigestByNameRequest { key } )).await?.into_inner();
+        let response = client
+            .get_digest_by_name(Request::new(GetDigestByNameRequest { key }))
+            .await?
+            .into_inner();
         Ok(response.digest)
     }
 }
-
