@@ -18,10 +18,8 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 pub enum Command {
     Trigger {
-        name: String,
-
-        #[arg(short, long)]
-        body: String,
+        action: String,
+        payload: String,
     },
     Push {
         path: String,
@@ -41,8 +39,8 @@ pub async fn run() -> Result<()> {
     setup_tracing(cli.verbose)?;
 
     match cli.command {
-        Command::Trigger { name, body } => {
-            trigger::run(name, body).await?
+        Command::Trigger { action, payload } => {
+            trigger::run(action, payload).await?
         }
         Command::Push { path } => {
             push::run(&path).await?;
