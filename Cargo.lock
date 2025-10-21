@@ -418,6 +418,8 @@ dependencies = [
  "tokio-stream",
  "tokio-tar",
  "tonic",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
