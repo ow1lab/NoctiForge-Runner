@@ -41,7 +41,7 @@ impl NativeWorker {
 }
 
 impl NativeWorker {
-    #[instrument(skip(self, body), fields(digest = %digest, body_size = body.len()))]
+    #[instrument(name = "function_execute", level = "debug", skip(self, body), fields(digest = %digest, body_size = body.len()))]
     pub async fn execute(&self, digest: String, body: String) -> Result<String> {
         debug!("Executing function");
 
