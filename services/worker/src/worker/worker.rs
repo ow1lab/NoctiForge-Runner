@@ -11,7 +11,7 @@ use tonic::Request;
 use tracing::{debug, info, instrument, warn};
 use url::Url;
 
-use crate::client::registry_clint::RegistryClient;
+use crate::{client::registry_clint::RegistryClient, worker::container};
 use proto::api::action::{
     InvokeRequest, function_runner_service_client::FunctionRunnerServiceClient,
 };
@@ -81,50 +81,17 @@ impl NativeWorker {
 
         info!(digest = %digest, "Starting new handler");
         let dir_path = self.registry_service.get_tar_by_digest(&digest).await?;
-        let url = self.start_handler(dir_path).await?;
+
+        let mut proc = container::ProccesContainer::new(dir_path).await?;
+        proc.start()?;
+
+        let url = proc.get_url();
+        self.wait_for_server_ready(&url).await?;
 
         // Insert into cache
         self.function_urls.lock().await.insert(digest.clone(), url.clone());
         info!(digest = %digest, socket = %url.path(), "Handler cached");
 
-        Ok(url)
-    }
-
-    async fn start_handler(&self, bin_path: PathBuf) -> Result<Url> {
-        let bootstrap_path = bin_path.join("bootstrap");
-        let uuid = uuid::Uuid::new_v4();
-
-        let socket_path = match self.config.is_dev {
-            true => Path::new("/tmp"),
-            false => Path::new("/run"),
-        }
-        .join(uuid.to_string())
-        .with_extension("sock");
-
-        let socket_path_str = socket_path
-            .to_str()
-            .ok_or_else(|| anyhow::anyhow!("Invalid socket path"))?;
-
-        debug!(
-            bootstrap = ?bootstrap_path,
-            socket = %socket_path_str,
-            "Spawning handler process"
-        );
-
-        Command::new(&bootstrap_path)
-            .env("SOCKET_PATH", socket_path_str)
-            .spawn()
-            .map_err(|e| {
-                warn!(bootstrap = ?bootstrap_path, error = %e, "Failed to spawn handler");
-                anyhow::anyhow!("Failed to spawn handler: {}", e)
-            })?;
-
-        let url = Url::from_file_path(&socket_path)
-            .map_err(|_| anyhow::anyhow!("Failed to create URL from socket path"))?;
-
-        self.wait_for_server_ready(&url).await?;
-
-        info!(socket = %url.path(), "Handler started successfully");
         Ok(url)
     }
 

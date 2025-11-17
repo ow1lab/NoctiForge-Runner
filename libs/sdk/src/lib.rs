@@ -61,7 +61,7 @@ where
         }
     }
 
-    let socket_path = std::env::var("SOCKET_PATH").expect("'SOCKET_PATH' was not set");
+    let socket_path = "/tmp/app.sock";
 
     if std::path::Path::new(&socket_path).exists() {
         std::fs::remove_file(&socket_path)?;

@@ -12,7 +12,7 @@ use crate::client::controlplane_client::ControlPlaneClient;
 use crate::client::registry_clint::RegistryClient;
 use crate::config::Environment;
 use crate::server::WorkerServer;
-use crate::worker::{Config, NativeWorker};
+use crate::worker::worker::{Config, NativeWorker};
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
