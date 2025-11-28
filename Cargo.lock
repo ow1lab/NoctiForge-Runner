@@ -3682,7 +3682,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "libcontainer",
+ "nix 0.29.0",
  "proto",
+ "serde_json",
  "tokio",
  "tokio-tar",
  "tonic",

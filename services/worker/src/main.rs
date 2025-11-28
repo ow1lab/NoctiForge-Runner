@@ -4,9 +4,15 @@ mod path;
 mod server;
 mod worker;
 
+use std::path::{Path, PathBuf};
+use nix::sys::stat::Mode;
+
+use libcontainer::syscall::syscall::create_syscall;
+use libcontainer::utils::create_dir_all_with_mode;
 use proto::api::worker::worker_service_server::WorkerServiceServer;
 use tonic::transport::Server;
 use tracing::{error, info};
+use anyhow::{bail, Result};
 
 use crate::client::controlplane_client::ControlPlaneClient;
 use crate::client::registry_clint::RegistryClient;
@@ -34,6 +40,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Starting application");
 
+    let syscall = create_syscall();
+    let root_path = determine_rootpath(&*syscall)?;
+
     let config = config::ServerConfig::from_env();
     if config.env == config::Environment::Development {
         info!("Starting in Development mode");
@@ -41,8 +50,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let registry_clinet = RegistryClient::new(config.registry_clinet);
     let controlplane_client = ControlPlaneClient::new(config.controlplane_clinet);
+
     let function_worker = NativeWorker::new(
         registry_clinet,
+        root_path,
+        &*syscall,
         Config {
             is_dev: config.env == Environment::Development,
         },
@@ -63,4 +75,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Server shut down gracefully");
     Ok(())
+}
+
+fn determine_rootpath(
+    syscall: &dyn libcontainer::syscall::Syscall
+    ) -> Result<PathBuf> {
+    let uid = syscall.get_uid().as_raw();
+
+    if let Ok(path) = std::env::var("XDG_RUNTIME_DIR") {
+        let path = Path::new(&path).join("noctiforge");
+        if create_dir_all_with_mode(&path, uid, Mode::S_IRWXU).is_ok() {
+            return Ok(path);
+        }
+    }
+
+    // XDG_RUNTIME_DIR is not set, try the usual location
+    let path = PathBuf::from(format!("/run/user/{uid}/noctiforge"));
+    if create_dir_all_with_mode(&path, uid, Mode::S_IRWXU).is_ok() {
+        return Ok(path);
+    }
+
+    bail!("could not find a storage location with suitable permissions for the current user");
 }

@@ -1,17 +1,15 @@
 use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
+    collections::HashMap, path::PathBuf, sync::Arc, time::Duration
 };
 
 use anyhow::{Ok, Result};
-use tokio::{process::Command, sync::Mutex, time::sleep};
+use libcontainer::syscall::Syscall;
+use tokio::{sync::Mutex, time::sleep};
 use tonic::Request;
 use tracing::{debug, info, instrument, warn};
 use url::Url;
 
-use crate::{client::registry_clint::RegistryClient, worker::container};
+use crate::{client::registry_clint::RegistryClient, worker::{container, spec::SysUserParms}};
 use proto::api::action::{
     InvokeRequest, function_runner_service_client::FunctionRunnerServiceClient,
 };
@@ -26,16 +24,25 @@ pub struct Config {
 pub struct NativeWorker {
     function_urls: Arc<Mutex<HashMap<String, Url>>>,
     registry_service: RegistryClient,
-    config: Config,
+    root_path: PathBuf,
+    sysuser: SysUserParms 
 }
 
 impl NativeWorker {
-    pub fn new(registry_service: RegistryClient, server_config: Config) -> Result<Self> {
+    pub fn new(
+        registry_service: RegistryClient,
+        root_path: PathBuf,
+        syscall: &dyn Syscall,
+        server_config: Config) -> Result<Self> {
         info!(is_dev = server_config.is_dev, "Creating NativeWorker");
         Ok(Self {
             function_urls: Arc::new(Mutex::new(HashMap::new())),
             registry_service,
-            config: server_config,
+            root_path,
+            sysuser: SysUserParms {
+                uid: syscall.get_euid().as_raw(),
+                gid: syscall.get_egid().as_raw(),
+            },
         })
     }
 }
@@ -82,7 +89,10 @@ impl NativeWorker {
         info!(digest = %digest, "Starting new handler");
         let dir_path = self.registry_service.get_tar_by_digest(&digest).await?;
 
-        let mut proc = container::ProccesContainer::new(dir_path).await?;
+        let mut proc = container::ProccesContainer::new(
+            self.root_path.clone(),
+            dir_path,
+            &self.sysuser).await?;
         proc.start()?;
 
         let url = proc.get_url();
