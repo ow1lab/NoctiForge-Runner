@@ -86,16 +86,18 @@ impl NativeWorker {
             }
         }
 
-        info!(digest = %digest, "Starting new handler");
+        info!(digest = %digest, "Creating new handler");
         let dir_path = self.registry_service.get_tar_by_digest(&digest).await?;
 
         let mut proc = container::ProccesContainer::new(
             self.root_path.clone(),
             dir_path,
             &self.sysuser).await?;
+        info!(digest = %digest, "Starting handler");
         proc.start()?;
 
         let url = proc.get_url();
+        debug!(url = %url, "Connecting to handler");
         self.wait_for_server_ready(&url).await?;
 
         // Insert into cache
@@ -112,8 +114,7 @@ impl NativeWorker {
         debug!(max_attempts, "Waiting for server to be ready");
 
         for attempt in 1..=max_attempts {
-            let uri = format!("unix://{}", url.path());
-            match FunctionRunnerServiceClient::connect(uri).await {
+            match FunctionRunnerServiceClient::connect(url.to_string()).await {
                 std::result::Result::Ok(_) => {
                     debug!(attempts = attempt, "Server is ready");
                     return Ok(());

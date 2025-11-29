@@ -61,7 +61,7 @@ where
         }
     }
 
-    let socket_path = "/tmp/app.sock";
+    let socket_path = "/run/app.sock";
 
     if std::path::Path::new(&socket_path).exists() {
         std::fs::remove_file(&socket_path)?;

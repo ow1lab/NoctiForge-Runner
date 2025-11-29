@@ -5,7 +5,7 @@ use libcontainer::{
     container::{builder::ContainerBuilder, Container},
     syscall::{syscall::SyscallType},
 };
-use tokio::{fs::{DirBuilder, File}, io::{AsyncWriteExt, BufWriter}};
+use tokio::{fs::{self, DirBuilder, File}, io::{self, AsyncWriteExt, BufWriter}};
 use url::Url;
 use uuid::Uuid;
 use crate::{path::get_instence_path, worker::spec::{get_rootless, SysUserParms}};
@@ -22,16 +22,16 @@ impl ProccesContainer {
         _ = handle_bin;
 
         let instance_id = Uuid::new_v4().to_owned().to_string();
-        let rootfs = Self::create_rootfs(&instance_id, sys_user).await?;
+        let rootfs = Self::create_rootfs(&instance_id, handle_bin, sys_user).await?;
 
         let container = ContainerBuilder::new(instance_id.clone(), SyscallType::default())
             .with_root_path(root_path).expect("invalid root path")
-            .as_init(rootfs)
+            .as_init(rootfs.clone())
             .with_systemd(false)
             .build()?;
 
         // TODO: make this inte instance path
-        let sock_path = format!("unix:///run/noctiforge/{}/app.sock", instance_id);
+        let sock_path = format!("unix://{}/rootfs/run/app.sock", rootfs.to_string_lossy());
         let url = Url::parse(&sock_path)?;
 
         Ok(Self {
@@ -41,7 +41,7 @@ impl ProccesContainer {
         })
     }
 
-    async fn create_rootfs(instance_id: &str, sys_user: &SysUserParms) -> Result<PathBuf> {
+    async fn create_rootfs(instance_id: &str, handle_bin: PathBuf, sys_user: &SysUserParms) -> Result<PathBuf> {
         let path = PathBuf::from(get_instence_path(instance_id));
 
         if path.exists() {
@@ -59,13 +59,18 @@ impl ProccesContainer {
         writer.write_all(&json_bytes).await?;
         writer.flush().await?;
 
-        DirBuilder::new().create(&path.join("rootfs")).await?;
+        let rootfs_path = path.join("rootfs");
+        DirBuilder::new().create(&rootfs_path).await?;
+
+        copy_dir_all(handle_bin, rootfs_path.join("app")).await?;
+
+        DirBuilder::new().create(&rootfs_path.join("run")).await?;
 
         Ok(path)
     }
 
     pub fn start(&mut self) -> Result<()> {
-        self.container.start()?;
+        self.container.start().with_context(|| "failed to start container")?;
         Ok(())
     }
 
@@ -84,3 +89,28 @@ impl ProccesContainer {
         Ok(())
     }
 }
+
+pub async fn copy_dir_all(src: PathBuf, dst: PathBuf) -> io::Result<()> {
+    let mut stack = vec![(src, dst)];
+
+    while let Some((src, dst)) = stack.pop() {
+        fs::create_dir_all(&dst).await?;
+
+        let mut entries = fs::read_dir(&src).await?;
+
+        while let Some(entry) = entries.next_entry().await? {
+            let ft = entry.file_type().await?;
+            let src_path = entry.path();
+            let dst_path = dst.join(entry.file_name());
+
+            if ft.is_dir() {
+                stack.push((src_path, dst_path));
+            } else {
+                fs::copy(src_path, dst_path).await?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
