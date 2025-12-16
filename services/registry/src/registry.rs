@@ -51,7 +51,7 @@ impl RegistryService for LocalBackend {
                 Status::internal(format!("failed to read store path: {:?}", err))
             })?;
         let data_size = data.len();
-        let chunk_count = (data_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
+        let chunk_count = data_size.div_ceil(CHUNK_SIZE);
 
         info!(
             digest = %req.digest,

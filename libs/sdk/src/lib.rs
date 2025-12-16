@@ -64,10 +64,10 @@ where
     let socket_path = "/run/app.sock";
 
     if std::path::Path::new(&socket_path).exists() {
-        std::fs::remove_file(&socket_path)?;
+        std::fs::remove_file(socket_path)?;
     }
 
-    let listener = UnixListener::bind(&socket_path)?;
+    let listener = UnixListener::bind(socket_path)?;
     log::info!("Starting server on Unix socket: {}", socket_path);
 
     let svc = FunctionRunnerServiceServer::new(MyService {

@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use crate::{
-    path::get_instence_path,
-    worker::spec::{SysUserParms, get_spec},
+    path::{copy_dir_all, get_instence_path},
+    worker::spec::{get_spec, SysUserParms},
 };
 use anyhow::{Context, Ok, Result};
 use libcontainer::{
@@ -10,7 +10,7 @@ use libcontainer::{
     syscall::syscall::SyscallType,
 };
 use tokio::{
-    fs::{self, DirBuilder, File},
+    fs::{DirBuilder, File},
     io::{AsyncWriteExt, BufWriter},
 };
 use url::Url;
@@ -48,7 +48,7 @@ impl ProccesContainer {
         handle_bin: PathBuf,
         sys_user: &SysUserParms,
     ) -> Result<PathBuf> {
-        let path = PathBuf::from(get_instence_path(instance_id));
+        let path = get_instence_path(instance_id);
 
         if path.exists() {
             anyhow::bail!("Root filesystem path already exists: {}", path.display());
@@ -109,26 +109,3 @@ impl TryFrom<PathBuf> for ProccesContainer {
     }
 }
 
-pub async fn copy_dir_all(src: PathBuf, dst: PathBuf) -> Result<()> {
-    let mut stack = vec![(src, dst)];
-
-    while let Some((src, dst)) = stack.pop() {
-        fs::create_dir_all(&dst).await?;
-
-        let mut entries = fs::read_dir(&src).await?;
-
-        while let Some(entry) = entries.next_entry().await? {
-            let ft = entry.file_type().await?;
-            let src_path = entry.path();
-            let dst_path = dst.join(entry.file_name());
-
-            if ft.is_dir() {
-                stack.push((src_path, dst_path));
-            } else {
-                fs::copy(src_path, dst_path).await?;
-            }
-        }
-    }
-
-    Ok(())
-}

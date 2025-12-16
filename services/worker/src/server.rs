@@ -2,7 +2,7 @@ use proto::api::worker::{ExecuteRequest, ExecuteResponse, worker_service_server:
 use tonic::{Request, Response, Status};
 use tracing::{debug, info, instrument, warn};
 
-use crate::{client::controlplane_client::ControlPlaneClient, worker::worker::NativeWorker};
+use crate::{client::controlplane_client::ControlPlaneClient, worker::organizer::NativeWorker};
 
 pub struct WorkerServer {
     function_worker: NativeWorker,
