@@ -13,7 +13,7 @@ use libcontainer::syscall::syscall::create_syscall;
 use libcontainer::utils::create_dir_all_with_mode;
 use proto::api::worker::worker_service_server::WorkerServiceServer;
 use tonic::transport::Server;
-use tracing::{error, info};
+use tracing::info;
 
 use crate::client::controlplane_client::ControlPlaneClient;
 use crate::client::registry_clint::RegistryClient;
@@ -22,6 +22,7 @@ use crate::server::WorkerServer;
 use crate::worker::organizer::{Config, NativeWorker};
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tokio::signal;
 
 mod background;
 
@@ -73,12 +74,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server = Server::builder()
         .add_service(WorkerServiceServer::new(worker_server))
         .serve(config.addr);
-    
+
     tokio::select! {
         result = server => {
             result?;
         }
-        _ = tokio::signal::ctrl_c() => {
+        _ = signal::ctrl_c() => {
             info!("Received shutdown signal (CTRL+C)");
         }
     }
