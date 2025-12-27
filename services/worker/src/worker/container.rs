@@ -13,7 +13,6 @@ use tokio::{
     fs::{self, DirBuilder, File},
     io::{AsyncWriteExt, BufWriter},
 };
-use tracing::info;
 use url::Url;
 
 const CONTAINER_STATE_FOLDER: &str = "state";
@@ -93,7 +92,6 @@ impl ContainerOps for LibcontainerOps {
     }
     
     fn load_container(&self, path: PathBuf) -> Result<Box<dyn ContainerWrapper>> {
-        debug!("loading container on {:?}", path);
         let container = Container::load(path)?;
         Ok(Box::new(RealContainerWrapper(container)))
     }
