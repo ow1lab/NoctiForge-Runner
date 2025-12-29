@@ -10,7 +10,9 @@ use url::Url;
 use crate::{
     client::registry_clint::RegistryClient,
     worker::{
-        container::{self}, function_invocations::FunctionInvocations, spec::SysUserParms
+        container::{self},
+        function_invocations::FunctionInvocations,
+        spec::SysUserParms,
     },
 };
 use proto::api::action::{
@@ -82,32 +84,35 @@ impl NativeWorker {
         Ok(resp.output)
     }
 
-
     async fn get_available_handler_uri(&mut self, digest: String) -> Result<Url> {
         // TODO: This is a workaround i don't like as there could be a very low way that this
-        // fails. 
+        // fails.
         let short_digest = &digest[..16];
 
         let url = if let Some(invocation) = self.function_invocations.get(short_digest).await {
             info!("Loading existing function");
-            invocation.url.clone()
+            {
+                let inv = invocation.lock().await;
+                inv.url.clone()
+            }
         } else {
             info!("Creating new function");
-            let dir_path = self
-                .registry_service
-                .get_tar_by_digest(&digest)
-                .await?;
+            let dir_path = self.registry_service.get_tar_by_digest(&digest).await?;
 
-            let proc = Arc::new(container::ProccesContainer::new(
-                short_digest,
-                dir_path,
-                self.root_path.clone(),
-                &self.sysuser,
-            )
-            .await?);
+            let proc = Arc::new(
+                container::ProccesContainer::new(
+                    short_digest,
+                    dir_path,
+                    self.root_path.clone(),
+                    &self.sysuser,
+                )
+                .await?,
+            );
 
             let url = proc.get_url()?;
-            self.function_invocations.insert(short_digest.to_string(), url.clone()).await;
+            self.function_invocations
+                .insert(short_digest.to_string(), url.clone())
+                .await;
             url
         };
 

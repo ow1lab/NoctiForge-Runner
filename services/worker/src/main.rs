@@ -7,7 +7,6 @@ mod worker;
 use nix::sys::stat::Mode;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use libcontainer::syscall::syscall::create_syscall;
@@ -69,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     )?;
 
-    let mut background_server = BackgroundJob::new(&function_invocations, Duration::from_secs(10));
+    let mut background_server = BackgroundJob::new(config.background_config, &function_invocations);
     let worker_server = WorkerServer::new(function_worker, controlplane_client);
 
     info!("Worker listening on {}", config.addr);

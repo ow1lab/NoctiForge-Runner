@@ -118,12 +118,10 @@ impl ProccesContainer {
     }
 
 
-    #[allow(dead_code)]
     pub async fn load(root_path: &PathBuf, instance_id: &str) -> Result<Self> {
         Self::load_with_deps(root_path, instance_id, &LibcontainerOps).await
     }
 
-    #[allow(dead_code)]
     async fn load_with_deps(root_path: &PathBuf, instance_id: &str, ops: &impl ContainerOps) -> Result<Self> {
         let mut container = ops.load_container(root_path.join(CONTAINER_STATE_FOLDER).join(instance_id))?;
 
