@@ -40,16 +40,14 @@ impl RegistryService for LocalBackend {
 
         debug!(path = %request_path.display(), "Reading tar from registry path");
 
-        let data = read(&request_path)
-            .await
-            .map_err(|err| {
-                error!(
-                    path = %request_path.display(),
-                    error = %err,
-                    "Failed to read from registry path"
-                );
-                Status::internal(format!("failed to read store path: {:?}", err))
-            })?;
+        let data = read(&request_path).await.map_err(|err| {
+            error!(
+                path = %request_path.display(),
+                error = %err,
+                "Failed to read from registry path"
+            );
+            Status::internal(format!("failed to read store path: {:?}", err))
+        })?;
         let data_size = data.len();
         let chunk_count = data_size.div_ceil(CHUNK_SIZE);
 
@@ -74,10 +72,7 @@ impl RegistryService for LocalBackend {
         Ok(Response::new(Box::pin(stream)))
     }
 
-    #[instrument(
-        name = "Registry push",
-        skip(self, request)
-    )]
+    #[instrument(name = "Registry push", skip(self, request))]
     async fn push(
         &self,
         request: Request<Streaming<RegistryPushRequest>>,
@@ -93,10 +88,10 @@ impl RegistryService for LocalBackend {
                 error!(error = %err, "Failed to receive stream chunk");
                 Status::internal(err.to_string())
             })?;
-            
+
             chunk_count += 1;
             request_data.extend_from_slice(&request.data);
-            
+
             if chunk_count % 10 == 0 {
                 debug!(
                     chunks_received = chunk_count,
@@ -151,7 +146,7 @@ impl RegistryService for LocalBackend {
                 size_bytes = request_data.len(),
                 "Writing tar to registry"
             );
-            
+
             write(&request_path, &request_data).await.map_err(|err| {
                 error!(
                     path = %request_path.display(),
@@ -160,7 +155,7 @@ impl RegistryService for LocalBackend {
                 );
                 Status::internal(format!("failed to write store path: {:?}", err))
             })?;
-            
+
             info!(
                 digest = %digest,
                 path = %request_path.display(),

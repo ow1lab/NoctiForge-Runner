@@ -9,7 +9,7 @@ use crate::worker::function_invocations::FunctionInvocations;
 
 pub struct BackgroundConfig {
     pub time: Duration,
-    pub resource_ttl: Duration, 
+    pub resource_ttl: Duration,
 }
 
 pub struct BackgroundJob {
@@ -19,14 +19,11 @@ pub struct BackgroundJob {
 }
 
 impl BackgroundJob {
-    pub fn new(
-        config: BackgroundConfig,
-        function_invocations: &Arc<FunctionInvocations>,
-        ) -> Self {
-        return Self {
+    pub fn new(config: BackgroundConfig, function_invocations: &Arc<FunctionInvocations>) -> Self {
+        Self {
             config,
             cancel: CancellationToken::new(),
-            function_invocations: function_invocations.clone()
+            function_invocations: function_invocations.clone(),
         }
     }
 
@@ -42,11 +39,7 @@ impl BackgroundJob {
                 sleep(time).await;
                 for instance_id in function.keys().await {
                     if let Err(err) = execute(&instance_id, resource_ttl, &function).await {
-                        tracing::error!(
-                            "Something when worng with {}: {:?}",
-                            instance_id,
-                            err
-                        );
+                        tracing::error!("Something when worng with {}: {:?}", instance_id, err);
                     }
                 }
             }
@@ -59,11 +52,15 @@ impl BackgroundJob {
     }
 }
 
-pub async fn execute(instance_id: &str, resource_ttl: Duration, function: &FunctionInvocations) -> Result<()> {
+pub async fn execute(
+    instance_id: &str,
+    resource_ttl: Duration,
+    function: &FunctionInvocations,
+) -> Result<()> {
     if let Some(inv) = function.peek(instance_id).await {
         let expired = {
             let inv = inv.lock().await;
-            Instant::now() - inv.last_accessed > resource_ttl 
+            Instant::now() - inv.last_accessed > resource_ttl
         };
 
         if expired {

@@ -10,9 +10,7 @@ mod services;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt()
-        .with_target(false)
-        .init();
+    tracing_subscriber::fmt().with_target(false).init();
 
     let config = config::ServerConfig::from_env();
     let control_plane = server::ControlPlane::new(Path::new(config::DB_PATH)).await?;

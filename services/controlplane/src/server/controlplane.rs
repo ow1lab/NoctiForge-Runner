@@ -38,12 +38,12 @@ impl ControlPlaneService for ControlPlane {
             "Received request to set digest"
         );
         let result = self.digest_service.get_digest_by_name(&req.key).await;
-        
+
         match &result {
             Ok(_) => info!(key = %req.key, "Successfully retrieved digest"),
             Err(e) => debug!(key = %req.key, status = ?e.code(), "Failed to retrieve digest"),
         }
-        
+
         result
     }
 
@@ -62,7 +62,8 @@ impl ControlPlaneService for ControlPlane {
             digest_length = req.digest.len(),
             "Received request to set digest"
         );
-        let result = self.digest_service
+        let result = self
+            .digest_service
             .set_digest_by_name(&req.key, &req.digest)
             .await;
 

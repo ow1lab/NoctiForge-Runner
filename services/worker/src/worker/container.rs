@@ -1,16 +1,16 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{
     path::copy_dir_all,
-    worker::spec::{get_spec, SysUserParms},
+    worker::spec::{SysUserParms, get_spec},
 };
 use anyhow::{Context, Result};
 use libcontainer::{
-    container::{builder::ContainerBuilder, Container, ContainerStatus},
+    container::{Container, ContainerStatus, builder::ContainerBuilder},
     syscall::syscall::SyscallType,
 };
 use tokio::{
-    fs::{self, DirBuilder, File},
+    fs::{DirBuilder, File},
     io::{AsyncWriteExt, BufWriter},
 };
 use url::Url;
@@ -27,9 +27,9 @@ pub trait ContainerOps {
         root_path: PathBuf,
         rootfs: PathBuf,
     ) -> Result<Box<dyn ContainerWrapper>>;
-    
+
     fn start_container(&self, container: &mut dyn ContainerWrapper) -> Result<()>;
-    
+
     fn load_container(&self, path: PathBuf) -> Result<Box<dyn ContainerWrapper>>;
 }
 
@@ -49,11 +49,11 @@ impl ContainerWrapper for RealContainerWrapper {
     fn bundle(&self) -> PathBuf {
         self.0.bundle().to_path_buf()
     }
-    
+
     fn status(&self) -> ContainerStatus {
         self.0.status()
     }
-    
+
     fn start(&mut self) -> Result<()> {
         self.0.start()?;
         Ok(())
@@ -85,12 +85,12 @@ impl ContainerOps for LibcontainerOps {
             .build()?;
         Ok(Box::new(RealContainerWrapper(container)))
     }
-    
+
     fn start_container(&self, container: &mut dyn ContainerWrapper) -> Result<()> {
         container.start()?;
         Ok(())
     }
-    
+
     fn load_container(&self, path: PathBuf) -> Result<Box<dyn ContainerWrapper>> {
         let container = Container::load(path)?;
         Ok(Box::new(RealContainerWrapper(container)))
@@ -108,22 +108,20 @@ impl ProccesContainer {
         root_path: PathBuf,
         sys_user: &SysUserParms,
     ) -> Result<Self> {
-        Self::new_with_deps(
-            digest,
-            handle_bin,
-            root_path,
-            sys_user,
-            &LibcontainerOps,
-        ).await
+        Self::new_with_deps(digest, handle_bin, root_path, sys_user, &LibcontainerOps).await
     }
 
-
-    pub async fn load(root_path: &PathBuf, instance_id: &str) -> Result<Self> {
+    pub async fn load(root_path: &Path, instance_id: &str) -> Result<Self> {
         Self::load_with_deps(root_path, instance_id, &LibcontainerOps).await
     }
 
-    async fn load_with_deps(root_path: &PathBuf, instance_id: &str, ops: &impl ContainerOps) -> Result<Self> {
-        let mut container = ops.load_container(root_path.join(CONTAINER_STATE_FOLDER).join(instance_id))?;
+    async fn load_with_deps(
+        root_path: &Path,
+        instance_id: &str,
+        ops: &impl ContainerOps,
+    ) -> Result<Self> {
+        let mut container =
+            ops.load_container(root_path.join(CONTAINER_STATE_FOLDER).join(instance_id))?;
 
         if container.status() != ContainerStatus::Running {
             ops.start_container(container.as_mut())?;
@@ -144,9 +142,10 @@ impl ProccesContainer {
             &instance_id,
             handle_bin,
             sys_user,
-            root_path.join(CONTAINER_RUN_FOLDER)
-        ).await?;
-        
+            root_path.join(CONTAINER_RUN_FOLDER),
+        )
+        .await?;
+
         let mut container = ops.build_container(
             instance_id.clone(),
             root_path.join(CONTAINER_STATE_FOLDER),
@@ -201,28 +200,6 @@ impl ProccesContainer {
         Ok(url)
     }
 
-    #[allow(dead_code)]
-    pub fn exist(root_path: &PathBuf, instance_id: &str) -> bool {
-        root_path.join(CONTAINER_STATE_FOLDER).join(instance_id).exists()
-    }
-
-    #[allow(dead_code)]
-    pub async fn get_all(root_path: &PathBuf) -> Result<Vec<Self>> {
-        let mut containers: Vec<ProccesContainer> = vec![];
-
-        let path = root_path.join(CONTAINER_STATE_FOLDER);
-        let mut dir = fs::read_dir(path).await?;
-        while let Some(entry) = dir.next_entry().await? {
-            let container_dir = entry.path();
-            let instance_id = container_dir.iter().last().unwrap().to_str().unwrap();
-            let container = ProccesContainer::load(root_path, instance_id).await?;
-            containers.push(container);
-        }
-
-        Ok(containers)
-    }
-
-    #[allow(dead_code)]
     pub async fn cleanup(&mut self) -> Result<()> {
         let path = self.container.bundle();
         self.container.delete()?;
@@ -248,26 +225,27 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let handle_bin = temp.path().join("bin");
         let root_path = temp.path().join("root");
-        
+
         // Setup test filesystem
         fs::create_dir_all(&handle_bin).await.unwrap();
         fs::create_dir_all(&root_path).await.unwrap();
-        fs::write(handle_bin.join("app"), b"#!/bin/sh\necho test").await.unwrap();
+        fs::write(handle_bin.join("app"), b"#!/bin/sh\necho test")
+            .await
+            .unwrap();
 
         // Create mocks
         let mut mock_ops = MockContainerOps::new();
-        
+
         // Set up container expectations
-        mock_ops
-            .expect_build_container()
-            .times(1)
-            .returning(move |_instance_id, _root_path, _rootfs| {
+        mock_ops.expect_build_container().times(1).returning(
+            move |_instance_id, _root_path, _rootfs| {
                 let mut mock = MockContainerWrapper::new();
                 mock.expect_bundle()
                     .return_const(PathBuf::from("/tmp/test_bundle"));
                 Ok(Box::new(mock))
-            });
-        
+            },
+        );
+
         mock_ops
             .expect_start_container()
             .times(1)
@@ -281,11 +259,12 @@ mod tests {
             root_path,
             &sys_user,
             &mock_ops,
-        ).await;
-        
+        )
+        .await;
+
         assert!(result.is_ok());
         let container = result.unwrap();
-        
+
         // Test get_url works with mocked container
         let url_result = container.get_url();
         assert!(url_result.is_ok());
@@ -294,15 +273,15 @@ mod tests {
     #[tokio::test]
     async fn test_container_get_url() {
         let mut mock_container = MockContainerWrapper::new();
-        
+
         mock_container
             .expect_bundle()
             .return_const(PathBuf::from("/tmp/test_container"));
-        
+
         let container = ProccesContainer {
             container: Box::new(mock_container),
         };
-        
+
         let url = container.get_url().unwrap();
         assert_eq!(url.scheme(), "unix");
         assert!(url.path().contains("test_container"));
@@ -314,22 +293,20 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let handle_bin = temp.path().join("bin");
         let root_path = temp.path().join("root");
-        
+
         fs::create_dir_all(&handle_bin).await.unwrap();
         fs::create_dir_all(&root_path).await.unwrap();
         fs::write(handle_bin.join("app"), b"test").await.unwrap();
 
         let mut mock_ops = MockContainerOps::new();
-        
+
         // Mock path resolver
         let expected_instance = "test_digest_123".to_string();
         let expected_instance_clone = expected_instance.clone();
-        
+
         mock_ops
             .expect_build_container()
-            .withf(move |instance_id, _root, _rootfs| {
-                instance_id == &expected_instance_clone
-            })
+            .withf(move |instance_id, _root, _rootfs| instance_id == &expected_instance_clone)
             .times(1)
             .returning(|_, _, _| {
                 let mut mock = MockContainerWrapper::new();
@@ -337,7 +314,7 @@ mod tests {
                     .return_const(PathBuf::from("/tmp/test"));
                 Ok(Box::new(mock))
             });
-        
+
         mock_ops
             .expect_start_container()
             .times(1)
@@ -350,7 +327,8 @@ mod tests {
             root_path,
             &sys_user,
             &mock_ops,
-        ).await;
+        )
+        .await;
 
         assert!(
             result.is_ok(),
@@ -365,7 +343,7 @@ mod tests {
         let handle_bin = temp.path().join("bin");
         let root_path = temp.path().join("root");
         let instance_path = root_path.join("run").join("test");
-        
+
         // Create the instance path beforehand
         fs::create_dir_all(&instance_path).await.unwrap();
         fs::create_dir_all(&handle_bin).await.unwrap();
@@ -373,21 +351,15 @@ mod tests {
         fs::write(handle_bin.join("app"), b"test").await.unwrap();
 
         let mut mock_ops = MockContainerOps::new();
-        
+
         // Container ops should NOT be called since we fail early
-        mock_ops
-            .expect_build_container()
-            .times(0);
+        mock_ops.expect_build_container().times(0);
 
         let sys_user = SysUserParms { uid: 0, gid: 0 };
-        let result = ProccesContainer::new_with_deps(
-            "test",
-            handle_bin,
-            root_path,
-            &sys_user,
-            &mock_ops,
-        ).await;
-        
+        let result =
+            ProccesContainer::new_with_deps("test", handle_bin, root_path, &sys_user, &mock_ops)
+                .await;
+
         // Should fail with "already exists" error
         assert!(result.is_err());
     }
@@ -396,33 +368,24 @@ mod tests {
     async fn test_try_from_with_running_container() {
         let temp = TempDir::new().unwrap();
         let container_path = temp.path().join("container");
-        
-        let mut mock_ops = MockContainerOps::new();
-        
-        // Mock a container that's already running
-        mock_ops
-            .expect_load_container()
-            .times(1)
-            .returning(|_| {
-                let mut mock = MockContainerWrapper::new();
-                mock.expect_status()
-                    .return_const(ContainerStatus::Running);
-                mock.expect_bundle()
-                    .return_const(PathBuf::from("/tmp/running"));
-                Ok(Box::new(mock))
-            });
-        
-        // Should NOT call start_container for running container
-        mock_ops
-            .expect_start_container()
-            .times(0);
 
-        let result = ProccesContainer::load_with_deps(
-            &container_path,
-            "container",
-            &mock_ops,
-        ).await;
-        
+        let mut mock_ops = MockContainerOps::new();
+
+        // Mock a container that's already running
+        mock_ops.expect_load_container().times(1).returning(|_| {
+            let mut mock = MockContainerWrapper::new();
+            mock.expect_status().return_const(ContainerStatus::Running);
+            mock.expect_bundle()
+                .return_const(PathBuf::from("/tmp/running"));
+            Ok(Box::new(mock))
+        });
+
+        // Should NOT call start_container for running container
+        mock_ops.expect_start_container().times(0);
+
+        let result =
+            ProccesContainer::load_with_deps(&container_path, "container", &mock_ops).await;
+
         assert!(result.is_ok());
     }
 
@@ -430,57 +393,45 @@ mod tests {
     async fn test_try_from_with_stopped_container() {
         let temp = TempDir::new().unwrap();
         let container_path = temp.path().join("container");
-        
+
         let mut mock_ops = MockContainerOps::new();
-        
+
         // Mock a stopped container
-        mock_ops
-            .expect_load_container()
-            .times(1)
-            .returning(|_| {
-                let mut mock = MockContainerWrapper::new();
-                mock.expect_status()
-                    .return_const(ContainerStatus::Stopped);
-                mock.expect_bundle()
-                    .return_const(PathBuf::from("/tmp/stopped"));
-                Ok(Box::new(mock))
-            });
-        
+        mock_ops.expect_load_container().times(1).returning(|_| {
+            let mut mock = MockContainerWrapper::new();
+            mock.expect_status().return_const(ContainerStatus::Stopped);
+            mock.expect_bundle()
+                .return_const(PathBuf::from("/tmp/stopped"));
+            Ok(Box::new(mock))
+        });
+
         // SHOULD call start_container for stopped container
         mock_ops
             .expect_start_container()
             .times(1)
             .returning(|_| Ok(()));
 
-        let result = ProccesContainer::load_with_deps(
-            &container_path,
-            "contaienr",
-            &mock_ops,
-        ).await;
-        
+        let result =
+            ProccesContainer::load_with_deps(&container_path, "contaienr", &mock_ops).await;
+
         assert!(result.is_ok());
     }
-    
+
     #[tokio::test]
     async fn test_cleanup_removes_directory() {
         let temp = TempDir::new().unwrap();
         let bundle_path = temp.path().join("test_bundle");
         fs::create_dir_all(&bundle_path).await.unwrap();
-        
+
         let bundle_clone = bundle_path.clone();
         let mut mock_container = MockContainerWrapper::new();
-        mock_container
-            .expect_bundle()
-            .return_const(bundle_clone);
-        mock_container
-            .expect_delete()
-            .returning(|| Ok(()));
+        mock_container.expect_bundle().return_const(bundle_clone);
+        mock_container.expect_delete().returning(|| Ok(()));
 
-        
         let mut container = ProccesContainer {
             container: Box::new(mock_container),
         };
-        
+
         let result = container.cleanup().await;
         assert!(result.is_ok());
         assert!(!bundle_path.exists());
