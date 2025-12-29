@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use libcontainer::oci_spec::runtime::{
-    LinuxBuilder, LinuxIdMappingBuilder, LinuxNamespace, LinuxNamespaceBuilder,
-    LinuxNamespaceType, Mount, ProcessBuilder, RootBuilder, Spec,
+    LinuxBuilder, LinuxIdMappingBuilder, LinuxNamespace, LinuxNamespaceBuilder, LinuxNamespaceType,
+    Mount, ProcessBuilder, RootBuilder, Spec,
 };
 
 #[derive(Clone)]

@@ -25,7 +25,7 @@ impl ControlPlaneClient {
             .map_err(|e| {
                 warn!(error = %e, "Failed to connect to control plane");
                 e
-            })?;        
+            })?;
 
         let response = client
             .get_digest_by_name(Request::new(GetDigestByNameRequest { key: key.clone() }))
@@ -37,7 +37,7 @@ impl ControlPlaneClient {
             .into_inner();
 
         debug!(key = %key, digest = %response.digest, "Successfully retrieved digest");
-        
+
         Ok(response.digest)
     }
 }

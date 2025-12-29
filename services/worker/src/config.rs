@@ -38,7 +38,6 @@ impl ServerConfig {
             .parse()
             .expect("Invalid registry address");
 
-
         let time = std::env::var("BACGROUND_TIME")
             .map_err(|_| "Missing BACGROUND_TIME")
             .and_then(|s| s.parse::<u64>().map_err(|_| "Invalid BACGROUND_TIME"))
@@ -47,7 +46,10 @@ impl ServerConfig {
 
         let resource_ttl = std::env::var("BACKGROUND_RESOURCE_TTL")
             .map_err(|_| "Missing BACKGROUND_RESOURCE_TTL")
-            .and_then(|s| s.parse::<u64>().map_err(|_| "Invalid BACKGROUND_RESOURCE_TTL"))
+            .and_then(|s| {
+                s.parse::<u64>()
+                    .map_err(|_| "Invalid BACKGROUND_RESOURCE_TTL")
+            })
             .map(Duration::from_secs)
             .unwrap_or(Duration::from_secs(30));
 
@@ -56,10 +58,7 @@ impl ServerConfig {
             controlplane_clinet,
             registry_clinet,
             env,
-            background_config: BackgroundConfig {
-                time,
-                resource_ttl
-            }
+            background_config: BackgroundConfig { time, resource_ttl },
         }
     }
 }

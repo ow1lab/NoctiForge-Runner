@@ -1,12 +1,12 @@
-use std::{path::{Path, PathBuf}};
+use std::path::{Path, PathBuf};
 
 use anyhow::{Ok, Result};
 use proto::api::registry::{RegistryPullRequest, registry_service_client::RegistryServiceClient};
-use tracing::{debug, info, instrument, warn};
 use std::io::Cursor;
 use tokio::fs::create_dir;
 use tokio_tar::Archive;
 use tonic::Request;
+use tracing::{debug, info, instrument, warn};
 
 use crate::path::get_dir_path;
 
@@ -49,9 +49,9 @@ impl RegistryClient {
             .map_err(|e| {
                 warn!(error = %e, "Failed to connect to registry");
                 e
-            })?;        
+            })?;
 
-       let mut response = client
+        let mut response = client
             .pull(Request::new(RegistryPullRequest {
                 digest: digest.to_string(),
             }))

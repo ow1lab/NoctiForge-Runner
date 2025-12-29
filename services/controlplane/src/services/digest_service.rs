@@ -1,8 +1,8 @@
 use proto::api::controlplane::{GetDigestByNameResponse, SetDigestToNameResponse};
 use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
-use tracing::{debug, error, info, instrument, warn};
 use std::path::Path;
 use tonic::{Response, Status};
+use tracing::{debug, error, info, instrument, warn};
 
 pub struct DigestService {
     pool: SqlitePool,
@@ -81,7 +81,8 @@ impl DigestService {
                     key
                 )))
             }
-        }}
+        }
+    }
 
     #[instrument(skip(self, digest), fields(key = %key, digest_length = digest.len()))]
     pub async fn set_digest_by_name(

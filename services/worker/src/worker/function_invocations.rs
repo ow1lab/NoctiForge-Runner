@@ -1,8 +1,8 @@
+use anyhow::{Ok, Result};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::{sync::Mutex, time::Instant};
 use tracing::info;
 use url::Url;
-use anyhow::{Ok, Result};
 
 use crate::worker::container::ProccesContainer;
 
@@ -18,7 +18,7 @@ pub struct FunctionInvocations {
 
 impl FunctionInvocations {
     pub fn new(root_path: PathBuf) -> Self {
-        Self { 
+        Self {
             functions: Arc::new(Mutex::new(HashMap::new())),
             root_path,
         }
@@ -26,7 +26,6 @@ impl FunctionInvocations {
 }
 
 impl FunctionInvocations {
-
     /// Get a process by instance_id
     pub async fn get(&self, instance_id: &str) -> Option<Arc<Mutex<Invocation>>> {
         self.get_internal(instance_id, true).await
@@ -36,7 +35,11 @@ impl FunctionInvocations {
         self.get_internal(instance_id, false).await
     }
 
-    pub async fn get_internal(&self, instance_id: &str, touch: bool) -> Option<Arc<Mutex<Invocation>>> {
+    pub async fn get_internal(
+        &self,
+        instance_id: &str,
+        touch: bool,
+    ) -> Option<Arc<Mutex<Invocation>>> {
         let functions = self.functions.lock().await;
 
         let invocation = functions.get(instance_id)?.clone();
@@ -53,15 +56,11 @@ impl FunctionInvocations {
         let functions = self.functions.lock().await;
         functions.keys().cloned().collect()
     }
-    
+
     /// Insert a process (idempotent overwrite)
-    pub async fn insert(
-        &self,
-        instance_id: String,
-        url: Url,
-    ) -> Arc<Mutex<Invocation>> {
+    pub async fn insert(&self, instance_id: String, url: Url) -> Arc<Mutex<Invocation>> {
         info!("inserting a new proccess with id {}", instance_id);
-        let new_invocation = Arc::new(Mutex::new(Invocation{
+        let new_invocation = Arc::new(Mutex::new(Invocation {
             url,
             last_accessed: Instant::now(),
         }));
@@ -69,7 +68,7 @@ impl FunctionInvocations {
         functions.insert(instance_id, new_invocation.clone());
         new_invocation
     }
-    
+
     pub async fn delete(&self, instance_id: &str) -> Result<()> {
         info!("deleting {}", instance_id);
 

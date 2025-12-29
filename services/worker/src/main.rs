@@ -21,9 +21,9 @@ use crate::config::Environment;
 use crate::server::WorkerServer;
 use crate::worker::function_invocations::FunctionInvocations;
 use crate::worker::organizer::{Config, NativeWorker};
+use tokio::signal;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tokio::signal;
 
 mod background;
 
@@ -87,11 +87,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             info!("Received shutdown signal (CTRL+C)");
         }
     }
-    
+
     info!("Server shut down gracefully");
     background_server.stop();
     function_invocations.delete_all().await?;
-    Ok(())}
+    Ok(())
+}
 
 fn determine_rootpath(syscall: &dyn libcontainer::syscall::Syscall) -> Result<PathBuf> {
     let uid = syscall.get_uid().as_raw();

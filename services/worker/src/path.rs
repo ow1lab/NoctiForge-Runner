@@ -50,7 +50,10 @@ mod tests {
     #[test]
     fn test_get_pkgs_dir() {
         let pkgs_dir = get_pkgs_dir();
-        assert_eq!(pkgs_dir, PathBuf::from("/var/lib/noctiforge/native_worker/pkgs"));
+        assert_eq!(
+            pkgs_dir,
+            PathBuf::from("/var/lib/noctiforge/native_worker/pkgs")
+        );
     }
 
     #[test]
@@ -88,7 +91,7 @@ mod tests {
         // Verify destination exists
         assert!(dst.exists());
         assert!(dst.join("test.txt").exists());
-        
+
         // Verify content
         let content = fs::read_to_string(dst.join("test.txt")).await.unwrap();
         assert_eq!(content, "hello");
@@ -98,12 +101,14 @@ mod tests {
     async fn test_copy_dir_all_nested() {
         let temp = TempDir::new().unwrap();
         let src = temp.path().join("src");
-        
+
         // Create nested structure
         fs::create_dir_all(src.join("subdir")).await.unwrap();
         fs::write(src.join("file1.txt"), b"content1").await.unwrap();
         fs::write(src.join("file2.txt"), b"content2").await.unwrap();
-        fs::write(src.join("subdir/file3.txt"), b"content3").await.unwrap();
+        fs::write(src.join("subdir/file3.txt"), b"content3")
+            .await
+            .unwrap();
 
         let dst = temp.path().join("dst");
 
@@ -121,8 +126,10 @@ mod tests {
         // Verify contents
         let content1 = fs::read_to_string(dst.join("file1.txt")).await.unwrap();
         assert_eq!(content1, "content1");
-        
-        let content3 = fs::read_to_string(dst.join("subdir/file3.txt")).await.unwrap();
+
+        let content3 = fs::read_to_string(dst.join("subdir/file3.txt"))
+            .await
+            .unwrap();
         assert_eq!(content3, "content3");
     }
 
@@ -153,15 +160,19 @@ mod tests {
     async fn test_copy_preserves_directory_structure() {
         let temp = TempDir::new().unwrap();
         let src = temp.path().join("src");
-        
+
         // Create complex directory structure
         fs::create_dir_all(src.join("a/b/c")).await.unwrap();
-        fs::write(src.join("a/b/c/deep.txt"), b"deep content").await.unwrap();
-        fs::write(src.join("a/shallow.txt"), b"shallow").await.unwrap();
-        
+        fs::write(src.join("a/b/c/deep.txt"), b"deep content")
+            .await
+            .unwrap();
+        fs::write(src.join("a/shallow.txt"), b"shallow")
+            .await
+            .unwrap();
+
         let dst = temp.path().join("dst");
         copy_dir_all(src, dst.clone()).await.unwrap();
-        
+
         // Verify structure preserved
         assert!(dst.join("a").exists());
         assert!(dst.join("a/b").exists());
@@ -175,17 +186,17 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let src = temp.path().join("src");
         fs::create_dir_all(&src).await.unwrap();
-        
+
         // Create multiple files
         for i in 0..10 {
             fs::write(src.join(format!("file{}.txt", i)), format!("content{}", i))
                 .await
                 .unwrap();
         }
-        
+
         let dst = temp.path().join("dst");
         copy_dir_all(src, dst.clone()).await.unwrap();
-        
+
         // Verify all files copied
         for i in 0..10 {
             let file_path = dst.join(format!("file{}.txt", i));
@@ -218,15 +229,19 @@ mod tests {
 
         // Create source
         fs::create_dir_all(&src).await.unwrap();
-        fs::write(src.join("file.txt"), b"new content").await.unwrap();
+        fs::write(src.join("file.txt"), b"new content")
+            .await
+            .unwrap();
 
         // Create destination with old content
         fs::create_dir_all(&dst).await.unwrap();
-        fs::write(dst.join("file.txt"), b"old content").await.unwrap();
+        fs::write(dst.join("file.txt"), b"old content")
+            .await
+            .unwrap();
 
         // Copy should overwrite
         copy_dir_all(src, dst.clone()).await.unwrap();
-        
+
         let content = fs::read_to_string(dst.join("file.txt")).await.unwrap();
         assert_eq!(content, "new content");
     }
@@ -238,13 +253,15 @@ mod tests {
         let dst = temp.path().join("dst");
 
         fs::create_dir_all(&src).await.unwrap();
-        
+
         // Create a binary file
         let binary_data: Vec<u8> = vec![0, 1, 2, 255, 254, 253];
-        fs::write(src.join("binary.bin"), &binary_data).await.unwrap();
+        fs::write(src.join("binary.bin"), &binary_data)
+            .await
+            .unwrap();
 
         copy_dir_all(src, dst.clone()).await.unwrap();
-        
+
         let copied_data = fs::read(dst.join("binary.bin")).await.unwrap();
         assert_eq!(copied_data, binary_data);
     }
@@ -253,7 +270,7 @@ mod tests {
     async fn test_copy_dir_all_preserves_empty_subdirs() {
         let temp = TempDir::new().unwrap();
         let src = temp.path().join("src");
-        
+
         // Create empty subdirectories
         fs::create_dir_all(src.join("empty1")).await.unwrap();
         fs::create_dir_all(src.join("empty2/nested")).await.unwrap();
@@ -261,7 +278,7 @@ mod tests {
 
         let dst = temp.path().join("dst");
         copy_dir_all(src, dst.clone()).await.unwrap();
-        
+
         assert!(dst.join("empty1").exists());
         assert!(dst.join("empty2").exists());
         assert!(dst.join("empty2/nested").exists());

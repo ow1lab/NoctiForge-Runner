@@ -2,11 +2,23 @@
 default:
     @just --list
 
-test:
-    @cargo test
+# Run rustfmt (always the same)
+fmt:
+    cargo fmt -- --check
 
-lint:
-    @cargo clippy
+# Clippy with optional release flag
+lint release_flag = "":
+    cargo clippy {{release_flag}} --all-targets --all-features -- -D warnings
+
+# Tests with optional release flag
+test release_flag = "":
+    cargo test {{release_flag}} --all
+
+# Combined check
+check release_flag = "":
+    just fmt
+    just lint {{release_flag}}
+    just test {{release_flag}}
 
 update:
     nix flake update
