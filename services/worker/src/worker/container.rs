@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{
     path::copy_dir_all,
@@ -10,7 +10,7 @@ use libcontainer::{
     syscall::syscall::SyscallType,
 };
 use tokio::{
-    fs::{self, DirBuilder, File},
+    fs::{DirBuilder, File},
     io::{AsyncWriteExt, BufWriter},
 };
 use url::Url;
@@ -118,11 +118,11 @@ impl ProccesContainer {
     }
 
 
-    pub async fn load(root_path: &PathBuf, instance_id: &str) -> Result<Self> {
+    pub async fn load(root_path: &Path, instance_id: &str) -> Result<Self> {
         Self::load_with_deps(root_path, instance_id, &LibcontainerOps).await
     }
 
-    async fn load_with_deps(root_path: &PathBuf, instance_id: &str, ops: &impl ContainerOps) -> Result<Self> {
+    async fn load_with_deps(root_path: &Path, instance_id: &str, ops: &impl ContainerOps) -> Result<Self> {
         let mut container = ops.load_container(root_path.join(CONTAINER_STATE_FOLDER).join(instance_id))?;
 
         if container.status() != ContainerStatus::Running {
@@ -201,28 +201,6 @@ impl ProccesContainer {
         Ok(url)
     }
 
-    #[allow(dead_code)]
-    pub fn exist(root_path: &PathBuf, instance_id: &str) -> bool {
-        root_path.join(CONTAINER_STATE_FOLDER).join(instance_id).exists()
-    }
-
-    #[allow(dead_code)]
-    pub async fn get_all(root_path: &PathBuf) -> Result<Vec<Self>> {
-        let mut containers: Vec<ProccesContainer> = vec![];
-
-        let path = root_path.join(CONTAINER_STATE_FOLDER);
-        let mut dir = fs::read_dir(path).await?;
-        while let Some(entry) = dir.next_entry().await? {
-            let container_dir = entry.path();
-            let instance_id = container_dir.iter().last().unwrap().to_str().unwrap();
-            let container = ProccesContainer::load(root_path, instance_id).await?;
-            containers.push(container);
-        }
-
-        Ok(containers)
-    }
-
-    #[allow(dead_code)]
     pub async fn cleanup(&mut self) -> Result<()> {
         let path = self.container.bundle();
         self.container.delete()?;

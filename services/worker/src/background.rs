@@ -23,7 +23,7 @@ impl BackgroundJob {
         config: BackgroundConfig,
         function_invocations: &Arc<FunctionInvocations>,
         ) -> Self {
-        return Self {
+        Self {
             config,
             cancel: CancellationToken::new(),
             function_invocations: function_invocations.clone()
