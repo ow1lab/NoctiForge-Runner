@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::{Ok, Result};
 use libcontainer::syscall::Syscall;
@@ -6,6 +6,9 @@ use tokio::time::sleep;
 use tonic::Request;
 use tracing::{debug, info, instrument, warn};
 use url::Url;
+
+use proto::api::action::invoke_result::Result::Success;
+use proto::api::action::invoke_result::Result::Failure;
 
 use crate::{
     client::registry_clint::RegistryClient,
@@ -71,7 +74,8 @@ impl NativeWorker {
 
         let resp = client
             .invoke(Request::new(InvokeRequest {
-                payload: Some(body),
+                payload: body.into_bytes(),
+                metadata: HashMap::new() 
             }))
             .await
             .map_err(|e| {
@@ -80,8 +84,14 @@ impl NativeWorker {
             })?
             .into_inner();
 
-        debug!(digest = %digest, output_size = resp.output.len(), "Function execution completed");
-        Ok(resp.output)
+        debug!(digest = %digest, "Function execution completed");
+        let resp_json = match resp.result {
+            Some(Success(s)) => String::from_utf8_lossy(&s.output).to_string(),
+            Some(Failure(f)) => f.message,
+            None => "error".to_string(),
+        };
+
+        Ok(resp_json)
     }
 
     async fn get_available_handler_uri(&mut self, digest: String) -> Result<Url> {

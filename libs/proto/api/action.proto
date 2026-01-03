@@ -2,16 +2,41 @@ syntax = "proto3";
 
 package noctiforge.action;
 
-option go_package = "github.com/Ow1Dev/noctiforge/pkg/api/server";
+option go_package = "github.com/Ow1Dev/noctiforge/pkg/api/server;server"; 
 
-service FunctionRunnerService {
+service FunctionRunnerService { 
   rpc Invoke(InvokeRequest) returns (InvokeResult);
-}
+} 
 
-message InvokeRequest {
-  optional string payload = 1;
-}
+message InvokeRequest { 
+  // Raw input payload (JSON, protobuf, bytes — defined by the function) 
+  bytes payload = 2; 
+
+  // Opaque metadata propagated to the function (trace IDs, auth, etc.) 
+  map<string, string> metadata = 4;
+} 
 
 message InvokeResult {
-  string output = 1;
+  oneof result { 
+    Success success = 1;
+    Failure failure = 2;
+  }
+} 
+
+message Success { 
+  // Raw function output 
+  bytes output = 1;
+} 
+
+message Failure { 
+  // Machine-readable classification of the failure 
+  ErrorCode code = 1; 
+
+  // Human-readable message (for logs/debugging, not UX guarantees) 
+  string message = 2;
+} 
+
+enum ErrorCode { 
+  FUNCTION_ERROR = 0; // Function returned an error 
+  FUNCTION_PANIC = 1; // Panic / unhandled exception 
 }
