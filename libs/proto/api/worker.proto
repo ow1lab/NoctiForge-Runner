@@ -8,10 +8,25 @@ service WorkerService {
 
 message ExecuteRequest {
   string action = 1;
-  string body = 2;
+  bytes body = 2;
+  map<string, string> metadata = 3;
 }
 
 message ExecuteResponse {
-  string status = 1;
-  string resp = 2;
+  oneof outcome {
+    ExecuteSuccess success = 1;
+    ProblemDetails problem = 2;
+  }
+}
+
+message ExecuteSuccess {
+  bytes body = 1;
+}
+
+message ProblemDetails {
+  string type = 1;                       // default: "about:blank"
+  string detail = 2;                     // specific explanation
+  string instance = 3;                   // request / invoke ID
+
+  map<string, string> extensions = 6;
 }

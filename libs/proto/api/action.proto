@@ -19,7 +19,7 @@ message InvokeRequest {
 message InvokeResult {
   oneof result { 
     Success success = 1;
-    Failure failure = 2;
+    Problem problem = 2;
   }
 } 
 
@@ -28,15 +28,8 @@ message Success {
   bytes output = 1;
 } 
 
-message Failure { 
-  // Machine-readable classification of the failure 
-  ErrorCode code = 1; 
-
-  // Human-readable message (for logs/debugging, not UX guarantees) 
-  string message = 2;
-} 
-
-enum ErrorCode { 
-  FUNCTION_ERROR = 0; // Function returned an error 
-  FUNCTION_PANIC = 1; // Panic / unhandled exception 
+message Problem {
+  string type = 1;                       // default: "about:blank"
+  string detail = 2;                     // specific explanation
 }
+

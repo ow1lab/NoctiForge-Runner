@@ -1,7 +1,5 @@
 use proto::api::action::{
-    ErrorCode, Failure, InvokeRequest, InvokeResult, Success,
-    function_runner_service_server::{FunctionRunnerService, FunctionRunnerServiceServer},
-    invoke_result::Result as IR,
+    InvokeRequest, InvokeResult, Success, function_runner_service_server::{FunctionRunnerService, FunctionRunnerServiceServer}, invoke_result::Result as IR
 };
 use serde::{Serialize, de::DeserializeOwned};
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -9,12 +7,14 @@ use std::{future::Future, marker::PhantomData};
 use tokio::net::UnixListener;
 use tonic::Response;
 
-pub use tonic::Status;
+use tonic::Status;
+
+pub use proto::api::action::Problem;
 
 pub async fn start<F, Fut, In, Out>(handler: F) -> Result<(), Box<dyn std::error::Error>>
 where
     F: Send + Sync + Clone + 'static + Fn(In) -> Fut,
-    Fut: Future<Output = Result<Out, Status>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<Out, Problem>> + Send + Sync + 'static,
     In: DeserializeOwned + Send + Sync + 'static,
     Out: Serialize + Send + Sync + 'static,
 {
@@ -25,7 +25,7 @@ where
     struct MyService<F, Fut, In, Out>
     where
         F: Send + Sync + Clone + 'static + Fn(In) -> Fut,
-        Fut: Future<Output = Result<Out, Status>> + Send + 'static,
+        Fut: Future<Output = Result<Out, Problem>> + Send + 'static,
         In: DeserializeOwned + Send + 'static,
         Out: Serialize + Send + Sync + 'static,
     {
@@ -38,7 +38,7 @@ where
     impl<F, Fut, In, Out> FunctionRunnerService for MyService<F, Fut, In, Out>
     where
         F: Send + Sync + Clone + 'static + Fn(In) -> Fut,
-        Fut: Future<Output = Result<Out, Status>> + Send + 'static + std::marker::Sync,
+        Fut: Future<Output = Result<Out, Problem>> + Send + 'static + std::marker::Sync,
         In: DeserializeOwned + Send + 'static + std::marker::Sync,
         Out: Serialize + Send + Sync + 'static,
     {
@@ -61,19 +61,16 @@ where
                 Ok(fut) => match fut.await {
                     Ok(out) => match serde_json::to_vec(&out) {
                         Ok(bytes) => IR::Success(Success { output: bytes }),
-                        Err(e) => IR::Failure(Failure {
-                            code: ErrorCode::FunctionError as i32,
-                            message: format!("Serialization failed: {}", e),
+                        Err(e) => IR::Problem(Problem {
+                            r#type: "container/serialization_failed".to_string(),
+                            detail: e.to_string(),
                         }),
                     },
-                    Err(e) => IR::Failure(Failure {
-                        code: ErrorCode::FunctionError as i32,
-                        message: e.to_string(),
-                    }),
+                    Err(problem) => IR::Problem(problem),
                 },
-                Err(_) => IR::Failure(Failure {
-                    code: ErrorCode::FunctionPanic as i32,
-                    message: "Handler panicked".to_string(),
+                Err(_) => IR::Problem(Problem {
+                    r#type: "container/panic_triggered".to_string(),
+                    detail: "Unknown panic occurred".to_string(),
                 }),
             };
 

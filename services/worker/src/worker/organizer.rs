@@ -2,13 +2,13 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::{Ok, Result};
 use libcontainer::syscall::Syscall;
+use proto::api::worker::ExecuteResponse;
+use proto::api::worker::ExecuteSuccess;
+use proto::api::worker::execute_response::Outcome;
 use tokio::time::sleep;
 use tonic::Request;
 use tracing::{debug, info, instrument, warn};
 use url::Url;
-
-use proto::api::action::invoke_result::Result::Failure;
-use proto::api::action::invoke_result::Result::Success;
 
 use crate::{
     client::registry_clint::RegistryClient,
@@ -59,7 +59,7 @@ impl NativeWorker {
 
 impl NativeWorker {
     #[instrument(name = "function_execute", level = "debug", skip(self, body), fields(digest = %digest, body_size = body.len()))]
-    pub async fn execute(&mut self, digest: String, body: String) -> Result<String> {
+    pub async fn execute(&mut self, digest: String, body: Vec<u8>) -> Result<ExecuteResponse> {
         debug!("Executing function");
 
         let uri = self.get_available_handler_uri(digest.clone()).await?;
@@ -74,7 +74,7 @@ impl NativeWorker {
 
         let resp = client
             .invoke(Request::new(InvokeRequest {
-                payload: body.into_bytes(),
+                payload: body,
                 metadata: HashMap::new(),
             }))
             .await
@@ -85,13 +85,32 @@ impl NativeWorker {
             .into_inner();
 
         debug!(digest = %digest, "Function execution completed");
-        let resp_json = match resp.result {
-            Some(Success(s)) => String::from_utf8_lossy(&s.output).to_string(),
-            Some(Failure(f)) => f.message,
-            None => "error".to_string(),
-        };
+        if let Some(r) = resp.result {
+            let outcome = match r {
+                proto::api::action::invoke_result::Result::Success(e) => Outcome::Success(ExecuteSuccess {
+                    body: e.output
+                }),
+                proto::api::action::invoke_result::Result::Problem(p) => Outcome::Problem(proto::api::worker::ProblemDetails {
+                    r#type: p.r#type,
+                    detail: p.detail,
+                    instance: "urn::invoke::abc1234".to_string(),
+                    extensions: HashMap::new(),
 
-        Ok(resp_json)
+                }),
+            };
+            return Ok(proto::api::worker::ExecuteResponse {
+                outcome: Some(outcome),
+            });
+        }
+
+        Ok(proto::api::worker::ExecuteResponse {
+            outcome: Some(Outcome::Problem(proto::api::worker::ProblemDetails {
+                r#type: "".to_string(),
+                detail: "".to_string(),
+                instance: "".to_string(),
+                extensions: HashMap::new(),
+            })),
+        })
     }
 
     async fn get_available_handler_uri(&mut self, digest: String) -> Result<Url> {

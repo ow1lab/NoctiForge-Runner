@@ -53,11 +53,8 @@ impl WorkerService for WorkerServer {
             Status::internal(format!("Execution failed: {:?}", e))
         })?;
 
-        info!(action = %req.action, output_size = output.len(), "Execution completed successfully");
+        info!(action = %req.action, "Execution completed successfully");
 
-        Ok(Response::new(ExecuteResponse {
-            status: "Ok".to_string(),
-            resp: output.to_string(),
-        }))
+        Ok(Response::new(output))
     }
 }

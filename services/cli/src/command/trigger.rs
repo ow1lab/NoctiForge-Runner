@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
-use proto::api::worker::ExecuteRequest;
+use proto::api::worker::{ExecuteRequest, execute_response};
 use proto::api::worker::worker_service_client::WorkerServiceClient;
 use tracing::{debug, error, info};
 
@@ -21,7 +23,8 @@ pub async fn run(key: String, body: String) -> Result<()> {
 
     let request = tonic::Request::new(ExecuteRequest {
         action: key.clone(),
-        body,
+        body: body.into(),
+        metadata: HashMap::new(),
     });
 
     info!("Sending ExecuteRequest to worker");
@@ -36,9 +39,18 @@ pub async fn run(key: String, body: String) -> Result<()> {
         }
     };
 
-    let output = response.into_inner().resp;
-    info!("Worker executed action '{}', output:", key);
-    println!("{output}");
+    let output = response.into_inner().outcome.unwrap();
+
+    if let execute_response::Outcome::Success(success) = output {
+        println!("{}", String::from_utf8_lossy(&success.body));
+    } else if let execute_response::Outcome::Problem(problem) = output {
+        println!("{}", problem.r#type);
+        println!("{}", problem.detail);
+        println!("{}", problem.instance);
+        for set in problem.extensions {
+            println!("{} {}", set.0, set.1);
+        }
+    }
 
     Ok(())
 }
