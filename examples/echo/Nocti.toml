@@ -1,5 +1,0 @@
-[project]
-name="echo"
-
-[build]
-type = "rust"
