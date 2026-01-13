@@ -1,7 +1,6 @@
 [workspace]
 members = [
   "libs/proto",
-  "services/cli",
   "services/controlplane",
   "services/registry",
   "services/worker",
