@@ -2,10 +2,10 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::{Ok, Result};
 use libcontainer::syscall::Syscall;
-use proto::api::worker::ExecuteResponse;
 use proto::api::worker::ExecuteSuccess;
 use proto::api::worker::execute_response::Outcome;
 use tokio::time::sleep;
+use tonic::Code;
 use tonic::Request;
 use tracing::{debug, info, instrument, warn};
 use url::Url;
@@ -64,7 +64,8 @@ impl NativeWorker {
         digest: String,
         body: Vec<u8>,
         metadata: HashMap<String, String>,
-    ) -> Result<ExecuteResponse> {
+        instance_id: &str,
+    ) -> Result<Outcome> {
         debug!("Executing function");
 
         let uri = self.get_available_handler_uri(digest.clone()).await?;
@@ -77,46 +78,70 @@ impl NativeWorker {
                 e
             })?;
 
-        let resp = client
+        let result = match client
             .invoke(Request::new(InvokeRequest {
                 payload: body,
                 metadata,
             }))
             .await
-            .map_err(|e| {
-                warn!(digest = %digest, error = %e, "Function invocation failed");
-                e
-            })?
-            .into_inner();
+        {
+            std::result::Result::Ok(resp) => {
+                debug!(digest = %digest, "Function execution completed");
 
-        debug!(digest = %digest, "Function execution completed");
-        if let Some(r) = resp.result {
-            let outcome = match r {
-                proto::api::action::invoke_result::Result::Success(e) => {
-                    Outcome::Success(ExecuteSuccess { body: e.output })
-                }
-                proto::api::action::invoke_result::Result::Problem(p) => {
-                    Outcome::Problem(proto::api::worker::ProblemDetails {
-                        r#type: p.r#type,
-                        detail: p.detail,
-                        instance: "urn::invoke::abc1234".to_string(),
+                match resp.into_inner().result {
+                    Some(proto::api::action::invoke_result::Result::Success(e)) => {
+                        Outcome::Success(ExecuteSuccess { body: e.output })
+                    }
+                    Some(proto::api::action::invoke_result::Result::Problem(p)) => {
+                        Outcome::Problem(proto::api::worker::ProblemDetails {
+                            r#type: p.r#type,
+                            detail: p.detail,
+                            instance: instance_id.to_string(),
+                            extensions: HashMap::new(),
+                        })
+                    }
+                    None => Outcome::Problem(proto::api::worker::ProblemDetails {
+                        r#type: "missing_result".to_string(),
+                        detail: "invoke returned no result".to_string(),
+                        instance: instance_id.to_string(),
                         extensions: HashMap::new(),
-                    })
+                    }),
                 }
-            };
-            return Ok(proto::api::worker::ExecuteResponse {
-                outcome: Some(outcome),
-            });
-        }
+            }
 
-        Ok(proto::api::worker::ExecuteResponse {
-            outcome: Some(Outcome::Problem(proto::api::worker::ProblemDetails {
-                r#type: "".to_string(),
-                detail: "".to_string(),
-                instance: "".to_string(),
-                extensions: HashMap::new(),
-            })),
-        })
+            Err(err) => {
+                let problem = match err.code() {
+                    Code::InvalidArgument => proto::api::worker::ProblemDetails {
+                        r#type: "invalid_argument".to_string(),
+                        detail: err.message().to_string(),
+                        instance: instance_id.to_string(),
+                        extensions: HashMap::new(),
+                    },
+                    Code::DataLoss => proto::api::worker::ProblemDetails {
+                        r#type: "serialization_error".to_string(),
+                        detail: err.message().to_string(),
+                        instance: instance_id.to_string(),
+                        extensions: HashMap::new(),
+                    },
+                    Code::Internal => proto::api::worker::ProblemDetails {
+                        r#type: "internal_error".to_string(),
+                        detail: err.message().to_string(),
+                        instance: instance_id.to_string(),
+                        extensions: HashMap::new(),
+                    },
+                    _ => proto::api::worker::ProblemDetails {
+                        r#type: "invoke_failed".to_string(),
+                        detail: err.message().to_string(),
+                        instance: instance_id.to_string(),
+                        extensions: HashMap::new(),
+                    },
+                };
+
+                Outcome::Problem(problem)
+            }
+        };
+
+        Ok(result)
     }
 
     async fn get_available_handler_uri(&mut self, digest: String) -> Result<Url> {
