@@ -52,7 +52,9 @@ impl WorkerService for WorkerServer {
         debug!(action = %req.action, digest = %digest, body_size = req.body.len(), "Executing function");
         let output = {
             let mut worker = self.function_worker.lock().await;
-            worker.execute(digest, req.body, req.metadata, instance_id).await
+            worker
+                .execute(digest, req.body, req.metadata, instance_id)
+                .await
         };
 
         info!(action = %req.action, "Execution completed successfully");

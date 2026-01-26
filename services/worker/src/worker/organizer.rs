@@ -64,10 +64,9 @@ impl NativeWorker {
         digest: String,
         body: Vec<u8>,
         metadata: HashMap<String, String>,
-        instance_id: &str 
+        instance_id: &str,
     ) -> Result<Outcome> {
         debug!("Executing function");
-
 
         let uri = self.get_available_handler_uri(digest.clone()).await?;
 
@@ -133,7 +132,7 @@ impl NativeWorker {
                     _ => proto::api::worker::ProblemDetails {
                         r#type: "invoke_failed".to_string(),
                         detail: err.message().to_string(),
-                        instance: instance_id.to_string(), 
+                        instance: instance_id.to_string(),
                         extensions: HashMap::new(),
                     },
                 };
